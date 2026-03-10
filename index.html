@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Defects List — iNNOVATECH SOLUTION</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Sarabun',sans-serif;background:#eef1f6;min-height:100vh;color:#222}
+
+.toolbar{background:#1a3a5c;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 2px 10px rgba(0,0,0,.3)}
+.toolbar-title{color:#fff;font-size:15px;font-weight:600}
+.toolbar-actions{display:flex;gap:10px;align-items:center}
+.btn{padding:8px 18px;border:none;border-radius:6px;font-family:'Sarabun',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .18s;text-decoration:none;display:inline-block}
+.btn-add{background:#27ae60;color:#fff}.btn-add:hover{background:#1e9150}
+.btn-submit{background:#e74c3c;color:#fff;font-size:14px;padding:10px 28px}.btn-submit:hover{background:#c0392b}
+.btn-admin{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.35);font-size:13px}.btn-admin:hover{background:rgba(255,255,255,.28)}
+.btn-clear{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25)}.btn-clear:hover{background:rgba(255,255,255,.22)}
+
+.page-wrap{max-width:960px;margin:28px auto 60px;padding:0 16px}
+.card{background:#fff;border-radius:10px;box-shadow:0 3px 18px rgba(0,0,0,.08);overflow:hidden;margin-bottom:16px}
+
+.doc-header{padding:20px 24px 16px;border-bottom:3px solid #1a3a5c}
+.hdr-top{display:flex;gap:14px;align-items:flex-start;margin-bottom:12px}
+.co-name{font-size:15px;font-weight:700;color:#1a3a5c;margin-bottom:2px}
+.co-det{font-size:11px;color:#555;line-height:1.8}
+.doc-title{text-align:center;font-size:17px;font-weight:700;color:#1a3a5c;background:#eaf0fb;padding:10px;border-radius:6px}
+
+.meta-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:16px 24px;border-bottom:1px solid #e4eaf3}
+.fgroup label{display:block;font-size:12px;font-weight:600;color:#1a3a5c;margin-bottom:4px}
+.fgroup input{width:100%;padding:8px 10px;border:1.5px solid #cdd6e4;border-radius:6px;font-family:'Sarabun',sans-serif;font-size:13px}
+.fgroup input:focus{outline:none;border-color:#1a3a5c}
+
+.sec-hdr{padding:12px 24px 8px;font-size:11px;font-weight:700;color:#1a3a5c;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e4eaf3}
+.defect-list{padding:14px 24px}
+
+.d-item{background:#f7f9fc;border:1.5px solid #d8e2f0;border-radius:9px;padding:14px;margin-bottom:14px}
+.d-item-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.d-badge{background:#1a3a5c;color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+.btn-rm{background:#fdecea;color:#e74c3c;border:1.5px solid #f5c2bf;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Sarabun',sans-serif}
+.btn-rm:hover{background:#e74c3c;color:#fff;border-color:#e74c3c}
+
+.d-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.d-full{grid-column:1/-1}
+.d-field label{display:block;font-size:11.5px;font-weight:600;color:#445;margin-bottom:4px}
+.d-field input[type=text],.d-field input[type=date],.d-field select,.d-field textarea{width:100%;padding:7px 10px;border:1.5px solid #cdd6e4;border-radius:6px;font-family:'Sarabun',sans-serif;font-size:13px;background:#fff}
+.d-field input:focus,.d-field select:focus,.d-field textarea:focus{outline:none;border-color:#1a3a5c}
+.d-field textarea{resize:vertical;min-height:50px}
+
+.res-wrap{display:flex;gap:8px;align-items:flex-start}
+.res-sel{width:145px;flex-shrink:0}
+
+.img-box{border:2px dashed #b0bec5;border-radius:8px;background:#f9fbfc;cursor:pointer;position:relative;min-height:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;transition:border-color .18s}
+.img-box:hover{border-color:#1a3a5c}
+.img-box input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.img-icon{font-size:24px;pointer-events:none}
+.img-hint{font-size:10px;color:#90a4ae;pointer-events:none;margin-top:2px}
+.img-prev{max-width:100%;max-height:140px;border-radius:6px;object-fit:contain;display:none;pointer-events:none}
+
+.sig-sec{padding:14px 24px 18px;border-top:1px solid #e4eaf3}
+.sig-row{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.sig-grp{text-align:center}
+.sig-lbl{font-size:11px;font-weight:600;color:#1a3a5c;margin-bottom:6px}
+.sig-wrap{border:1.5px solid #cdd6e4;border-radius:8px;overflow:hidden;background:#fff}
+canvas.sig-cv{display:block;touch-action:none;cursor:crosshair;width:100%;height:80px}
+.sig-clr{display:block;width:100%;padding:3px;background:#f0f4f8;border:none;border-top:1px solid #e0e6ee;font-family:'Sarabun',sans-serif;font-size:11px;color:#888;cursor:pointer}
+.sig-clr:hover{background:#e0e8f0;color:#333}
+.sig-name{margin-top:5px;width:100%;padding:5px 8px;border:1.5px solid #cdd6e4;border-radius:6px;font-family:'Sarabun',sans-serif;font-size:12px;text-align:center}
+.sig-name:focus{outline:none;border-color:#1a3a5c}
+
+.submit-row{padding:16px 24px;border-top:1px solid #e4eaf3;text-align:center}
+
+/* toast */
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#27ae60;color:#fff;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:600;z-index:999;display:none;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+.toast.error{background:#e74c3c}
+
+/* loading overlay */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px}
+.overlay.show{display:flex}
+.spinner{width:48px;height:48px;border:5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.overlay p{color:#fff;font-size:15px;font-weight:600}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="toolbar-title">📋 Defects List — iNNOVATECH SOLUTION</span>
+  <div class="toolbar-actions">
+    <button class="btn btn-add" onclick="addItem()">＋ เพิ่มรายการ</button>
+    <button class="btn btn-clear" onclick="clearAll()">🗑 ล้าง</button>
+    <a class="btn btn-admin" href="admin.html">🔐 Admin</a>
+  </div>
+</div>
+
+<div class="page-wrap">
+<div class="card">
+
+  <div class="doc-header">
+    <div class="hdr-top">
+      <img src="logo.png" style="width:64px;height:64px;object-fit:contain;border-radius:8px;" alt="logo">
+      <div>
+        <div class="co-name">บริษัท อินโนวาเทค โซลูชั่น จำกัด</div>
+        <div class="co-det">เลขที่ 393/4 หมู่ 6 ตำบลสันทรายน้อย อำเภอสันทราย จังหวัดเชียงใหม่ 50210<br>เลขประจำตัวผู้เสียภาษี 0505567002012</div>
+      </div>
+    </div>
+    <div class="doc-title">รายการงานที่ต้องแก้ไขและนำกลับ (Defects List)</div>
+  </div>
+
+  <div class="meta-row">
+    <div class="fgroup"><label>วันที่ตรวจสอบ</label><input type="date" id="inspectDate"></div>
+    <div class="fgroup"><label>Location</label><input type="text" id="location" placeholder="ระบุสถานที่..."></div>
+  </div>
+
+  <div class="sec-hdr">รายการที่ต้องแก้ไข</div>
+  <div class="defect-list" id="defectList"></div>
+
+  <div class="sig-sec">
+    <div class="sig-row">
+      <div class="sig-grp">
+        <div class="sig-lbl">ผู้ออก Defect / ผู้ตรวจสอบ Defect</div>
+        <div class="sig-wrap"><canvas class="sig-cv" id="sig0"></canvas><button class="sig-clr" onclick="clearSig(0)">✕ ล้าง</button></div>
+        <input type="text" class="sig-name" id="sname0" placeholder="ชื่อ-สกุล">
+      </div>
+      <div class="sig-grp">
+        <div class="sig-lbl">ผู้ส่งมอบงาน / ผู้แก้ไข Defect</div>
+        <div class="sig-wrap"><canvas class="sig-cv" id="sig1"></canvas><button class="sig-clr" onclick="clearSig(1)">✕ ล้าง</button></div>
+        <input type="text" class="sig-name" id="sname1" placeholder="ชื่อ-สกุล">
+      </div>
+      <div class="sig-grp">
+        <div class="sig-lbl">ผู้อนุมัติ</div>
+        <div class="sig-wrap"><canvas class="sig-cv" id="sig2"></canvas><button class="sig-clr" onclick="clearSig(2)">✕ ล้าง</button></div>
+        <input type="text" class="sig-name" id="sname2" placeholder="ชื่อ-สกุล">
+      </div>
+    </div>
+  </div>
+
+  <div class="submit-row">
+    <button class="btn btn-submit" onclick="submitForm()">💾 บันทึกและส่งข้อมูล</button>
+  </div>
+
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="overlay" id="overlay"><div class="spinner"></div><p id="overlayMsg">กำลังบันทึก...</p></div>
+
+<script>
+// ── CONFIG ── ใส่ Google Apps Script URL ตรงนี้หลัง deploy
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfy.../exec';
+
+let itemCount = 0;
+
+function addItem(){
+  itemCount++;
+  const idx=itemCount, list=document.getElementById('defectList');
+  const div=document.createElement('div');
+  div.className='d-item'; div.id='item-'+idx;
+  div.innerHTML=
+    '<div class="d-item-head"><div class="d-badge">'+idx+'</div>'
+    +'<button class="btn-rm" onclick="removeItem('+idx+')">✕ ลบ</button></div>'
+    +'<div class="d-grid">'
+    +'<div class="d-field d-full"><label>รายการที่ต้องแก้ไข</label><input type="text" placeholder="ระบุรายละเอียด..."></div>'
+    +'<div class="d-field"><label>Before</label><div class="img-box" id="bw'+idx+'">'
+    +'<input type="file" accept="image/*" onchange="loadImg(this,'bi'+idx+'','bw'+idx+'')">'
+    +'<div class="img-icon">🖼</div><div class="img-hint">คลิกอัปโหลด</div>'
+    +'<img class="img-prev" id="bi'+idx+'"></div></div>'
+    +'<div class="d-field"><label>After</label><div class="img-box" id="aw'+idx+'">'
+    +'<input type="file" accept="image/*" onchange="loadImg(this,'ai'+idx+'','aw'+idx+'')">'
+    +'<div class="img-icon">🖼</div><div class="img-hint">คลิกอัปโหลด</div>'
+    +'<img class="img-prev" id="ai'+idx+'"></div></div>'
+    +'<div class="d-field"><label>วันที่แล้วเสร็จ</label><input type="date"></div>'
+    +'<div class="d-field"><label>ผลการตรวจสอบ</label>'
+    +'<div class="res-wrap"><select class="res-sel" onchange="showRsn(this,'+idx+')">'
+    +'<option value="">— เลือก —</option><option value="pass">✅ ผ่าน</option><option value="fail">❌ ไม่ผ่าน</option></select>'
+    +'<textarea id="rsn'+idx+'" placeholder="เหตุผล..." style="display:none" rows="2"></textarea></div></div>'
+    +'</div>';
+  list.appendChild(div); rebadge();
+}
+
+function removeItem(idx){var e=document.getElementById('item-'+idx);if(e)e.remove();rebadge();}
+function rebadge(){document.querySelectorAll('.d-item').forEach(function(e,i){var b=e.querySelector('.d-badge');if(b)b.textContent=i+1;});}
+function showRsn(sel,idx){var r=document.getElementById('rsn'+idx);if(r)r.style.display=sel.value==='fail'?'block':'none';}
+
+function loadImg(input,imgId,wrapId){
+  var file=input.files[0]; if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var img=document.getElementById(imgId),wrap=document.getElementById(wrapId);
+    if(!img||!wrap)return;
+    img.src=e.target.result; img.style.display='block';
+    var ic=wrap.querySelector('.img-icon'),hi=wrap.querySelector('.img-hint');
+    if(ic)ic.style.display='none'; if(hi)hi.style.display='none';
+  };
+  reader.readAsDataURL(file);
+}
+
+// Signature
+function initSig(id){
+  var cv=document.getElementById('sig'+id); if(!cv)return;
+  cv.width=cv.parentElement.clientWidth||260; cv.height=80;
+  var ctx=cv.getContext('2d'),drawing=false;
+  function pos(e){var r=cv.getBoundingClientRect(),s=e.touches?e.touches[0]:e;return[s.clientX-r.left,s.clientY-r.top];}
+  function start(e){drawing=true;ctx.beginPath();var p=pos(e);ctx.moveTo(p[0],p[1]);}
+  function move(e){if(!drawing)return;var p=pos(e);ctx.lineTo(p[0],p[1]);ctx.strokeStyle='#111';ctx.lineWidth=1.8;ctx.lineCap='round';ctx.stroke();}
+  function stop(){drawing=false;}
+  cv.addEventListener('mousedown',start); cv.addEventListener('mousemove',move);
+  cv.addEventListener('mouseup',stop); cv.addEventListener('mouseleave',stop);
+  cv.addEventListener('touchstart',function(e){e.preventDefault();start(e);},{passive:false});
+  cv.addEventListener('touchmove',function(e){e.preventDefault();move(e);},{passive:false});
+  cv.addEventListener('touchend',stop);
+}
+function clearSig(id){var cv=document.getElementById('sig'+id);if(cv)cv.getContext('2d').clearRect(0,0,cv.width,cv.height);}
+
+function clearAll(){
+  if(!confirm('ล้างข้อมูลทั้งหมด?'))return;
+  document.getElementById('inspectDate').value='';
+  document.getElementById('location').value='';
+  document.getElementById('defectList').innerHTML=''; itemCount=0;
+  [0,1,2].forEach(function(i){clearSig(i);var n=document.getElementById('sname'+i);if(n)n.value='';});
+}
+
+function showToast(msg,isErr){
+  var t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast'+(isErr?' error':'');
+  t.style.display='block'; setTimeout(function(){t.style.display='none';},3500);
+}
+function showOverlay(msg){var o=document.getElementById('overlay');document.getElementById('overlayMsg').textContent=msg||'กำลังบันทึก...';o.classList.add('show');}
+function hideOverlay(){document.getElementById('overlay').classList.remove('show');}
+
+async function submitForm(){
+  if(SCRIPT_URL==='YOUR_GOOGLE_APPS_SCRIPT_URL'){
+    showToast('⚠️ กรุณาตั้งค่า Google Apps Script URL ก่อน (ดูใน README)',true); return;
+  }
+  var date=document.getElementById('inspectDate').value;
+  var loc=document.getElementById('location').value;
+  if(!date||!loc){showToast('กรุณากรอก วันที่ และ Location ก่อนครับ',true);return;}
+
+  var items=[];
+  document.querySelectorAll('.d-item').forEach(function(el,i){
+    var inp=el.querySelectorAll('input[type=text]');
+    var dt=el.querySelectorAll('input[type=date]');
+    var sel=el.querySelector('select');
+    var rsn=el.querySelector('textarea');
+    var bi=el.querySelector('.img-prev[id^="bi"]');
+    var ai=el.querySelector('.img-prev[id^="ai"]');
+    items.push({
+      no:i+1,
+      desc:inp[0]?inp[0].value:'',
+      doneDate:dt[0]?dt[0].value:'',
+      result:sel?sel.value:'',
+      reason:rsn?rsn.value:'',
+      beforeImg:bi&&bi.style.display!=='none'?bi.src:'',
+      afterImg:ai&&ai.style.display!=='none'?ai.src:''
+    });
+  });
+
+  var sigs=[0,1,2].map(function(id){var cv=document.getElementById('sig'+id);return cv?cv.toDataURL('image/png'):'';});
+  var sigNames=[0,1,2].map(function(id){var n=document.getElementById('sname'+id);return n?n.value:'';});
+
+  var payload={
+    inspectDate:date, location:loc, items:items,
+    sigNames:sigNames, sigs:sigs,
+    submittedAt:new Date().toISOString()
+  };
+
+  showOverlay('กำลังบันทึกข้อมูล...');
+  try{
+    await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)});
+    hideOverlay();
+    showToast('✅ บันทึกสำเร็จแล้วครับ!');
+    setTimeout(function(){if(confirm('บันทึกสำเร็จ! ต้องการล้างฟอร์มเพื่อกรอกใหม่?'))clearAll();},1000);
+  }catch(err){
+    hideOverlay(); showToast('❌ เกิดข้อผิดพลาด: '+err.message,true);
+  }
+}
+
+window.addEventListener('DOMContentLoaded',function(){
+  document.getElementById('inspectDate').value=new Date().toISOString().slice(0,10);
+  addItem();
+  setTimeout(function(){[0,1,2].forEach(initSig);},120);
+});
+</script>
+</body>
+</html>

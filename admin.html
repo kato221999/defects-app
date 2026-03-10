@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin — Defects List</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Sarabun',sans-serif;background:#eef1f6;min-height:100vh}
+
+/* LOGIN */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center}
+.login-box{background:#fff;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,.12);padding:40px 36px;width:340px;text-align:center}
+.login-logo{margin-bottom:16px}
+.login-logo img{width:72px;height:72px;object-fit:contain;border-radius:10px}
+.login-title{font-size:18px;font-weight:700;color:#1a3a5c;margin-bottom:4px}
+.login-sub{font-size:12px;color:#888;margin-bottom:24px}
+.login-box input{width:100%;padding:10px 12px;border:1.5px solid #cdd6e4;border-radius:7px;font-family:'Sarabun',sans-serif;font-size:14px;margin-bottom:12px}
+.login-box input:focus{outline:none;border-color:#1a3a5c}
+.btn-login{width:100%;padding:11px;background:#1a3a5c;color:#fff;border:none;border-radius:7px;font-family:'Sarabun',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:background .18s}
+.btn-login:hover{background:#14304d}
+.login-err{color:#e74c3c;font-size:12.5px;margin-top:8px;display:none}
+
+/* ADMIN PANEL */
+.admin-wrap{display:none}
+.toolbar{background:#1a3a5c;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 10px rgba(0,0,0,.3)}
+.toolbar-title{color:#fff;font-size:15px;font-weight:600}
+.btn{padding:8px 18px;border:none;border-radius:6px;font-family:'Sarabun',sans-serif;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+.btn-logout{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.35)}.btn-logout:hover{background:rgba(255,255,255,.28)}
+.btn-refresh{background:#27ae60;color:#fff}.btn-refresh:hover{background:#1e9150}
+.btn-form{background:#e67e22;color:#fff}.btn-form:hover{background:#ca6f1e}
+
+.page-wrap{max-width:1100px;margin:28px auto 60px;padding:0 16px}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:#fff;border-radius:10px;padding:18px 20px;box-shadow:0 2px 10px rgba(0,0,0,.07);text-align:center}
+.stat-num{font-size:32px;font-weight:700;color:#1a3a5c}
+.stat-lbl{font-size:12px;color:#777;margin-top:4px}
+
+.card{background:#fff;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.07);overflow:hidden;margin-bottom:20px}
+.card-hdr{padding:14px 20px;border-bottom:2px solid #e4eaf3;display:flex;align-items:center;justify-content:space-between}
+.card-hdr h2{font-size:15px;font-weight:700;color:#1a3a5c}
+
+table{width:100%;border-collapse:collapse}
+th{background:#1a3a5c;color:#fff;padding:10px 10px;font-size:12px;text-align:left;white-space:nowrap}
+td{padding:10px;border-bottom:1px solid #edf0f5;font-size:12.5px;vertical-align:top}
+tr:hover td{background:#f5f8ff}
+.badge-pass{background:#d5f5e3;color:#1e8449;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
+.badge-fail{background:#fde8e8;color:#c0392b;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
+.badge-pending{background:#fef9e7;color:#b7770d;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.thumb{width:60px;height:45px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid #ddd}
+.btn-view{background:#3498db;color:#fff;border:none;border-radius:5px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'Sarabun',sans-serif;white-space:nowrap}
+.btn-view:hover{background:#2980b9}
+
+/* modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;display:none;align-items:flex-start;justify-content:center;padding:30px 16px;overflow-y:auto}
+.modal-bg.show{display:flex}
+.modal{background:#fff;border-radius:12px;max-width:800px;width:100%;padding:24px;box-shadow:0 8px 40px rgba(0,0,0,.2)}
+.modal-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.modal-hdr h3{font-size:16px;font-weight:700;color:#1a3a5c}
+.btn-close{background:#eee;border:none;border-radius:6px;padding:6px 14px;font-size:13px;cursor:pointer}
+.modal-imgs{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.modal-imgs img{width:100%;border-radius:8px;border:1px solid #ddd;max-height:220px;object-fit:contain}
+.modal-meta{font-size:13px;line-height:2}
+.modal-meta span{font-weight:600;color:#1a3a5c}
+
+.empty-state{text-align:center;padding:50px 20px;color:#aaa;font-size:14px}
+
+.spinner{display:inline-block;width:20px;height:20px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* filter bar */
+.filter-bar{padding:12px 20px;background:#f7f9fc;border-bottom:1px solid #e4eaf3;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.filter-bar input,.filter-bar select{padding:6px 10px;border:1.5px solid #cdd6e4;border-radius:6px;font-family:'Sarabun',sans-serif;font-size:12.5px}
+.filter-bar input:focus,.filter-bar select:focus{outline:none;border-color:#1a3a5c}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginWrap">
+  <div class="login-box">
+    <div class="login-logo"><img src="logo.png" alt="logo"></div>
+    <div class="login-title">Admin Dashboard</div>
+    <div class="login-sub">iNNOVATECH SOLUTION — Defects System</div>
+    <input type="text" id="adminUser" placeholder="Username" autocomplete="username">
+    <input type="password" id="adminPass" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="btn-login" onclick="doLogin()">เข้าสู่ระบบ</button>
+    <div class="login-err" id="loginErr">Username หรือ Password ไม่ถูกต้อง</div>
+  </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div class="admin-wrap" id="adminWrap">
+  <div class="toolbar">
+    <span class="toolbar-title">🔐 Admin — Defects List Dashboard</span>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-refresh" onclick="loadData()">🔄 รีเฟรช</button>
+      <a class="btn btn-form" href="index.html">📋 กลับหน้า Form</a>
+      <button class="btn btn-logout" onclick="logout()">ออกจากระบบ</button>
+    </div>
+  </div>
+
+  <div class="page-wrap">
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-num" id="statTotal">—</div><div class="stat-lbl">รายการทั้งหมด (Submission)</div></div>
+      <div class="stat-card"><div class="stat-num" id="statPass" style="color:#27ae60">—</div><div class="stat-lbl">รายการที่ผ่าน</div></div>
+      <div class="stat-card"><div class="stat-num" id="statFail" style="color:#e74c3c">—</div><div class="stat-lbl">รายการที่ไม่ผ่าน</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-hdr"><h2>📊 รายการทั้งหมด</h2><span id="lastUpdate" style="font-size:11px;color:#aaa"></span></div>
+      <div class="filter-bar">
+        <input type="text" id="filterText" placeholder="🔍 ค้นหา..." oninput="renderTable()">
+        <select id="filterResult" onchange="renderTable()">
+          <option value="">ทุกผล</option>
+          <option value="pass">✅ ผ่าน</option>
+          <option value="fail">❌ ไม่ผ่าน</option>
+        </select>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>#</th><th>วันที่ตรวจสอบ</th><th>Location</th>
+            <th>รายการที่ต้องแก้ไข</th><th>Before</th><th>After</th>
+            <th>วันที่แล้วเสร็จ</th><th>ผลการตรวจสอบ</th><th>บันทึกเมื่อ</th><th></th>
+          </tr></thead>
+          <tbody id="tableBody"><tr><td colspan="10" class="empty-state">กำลังโหลด...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-hdr">
+      <h3 id="modalTitle">รายละเอียด</h3>
+      <button class="btn-close" onclick="closeModal()">✕ ปิด</button>
+    </div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ── ต้องตรงกับ index.html
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfy.../exec';
+// Admin credentials (เปลี่ยนได้)
+const ADMIN_USER = 'admin';
+const ADMIN_PASS = 'innova2024';
+
+let allData = [];
+
+/* ── LOGIN ── */
+function doLogin(){
+  var u=document.getElementById('adminUser').value.trim();
+  var p=document.getElementById('adminPass').value;
+  if(u===ADMIN_USER && p===ADMIN_PASS){
+    sessionStorage.setItem('adminOk','1');
+    document.getElementById('loginWrap').style.display='none';
+    document.getElementById('adminWrap').style.display='block';
+    loadData();
+  } else {
+    document.getElementById('loginErr').style.display='block';
+    document.getElementById('adminPass').value='';
+  }
+}
+function logout(){
+  sessionStorage.removeItem('adminOk');
+  location.reload();
+}
+
+/* ── LOAD DATA ── */
+async function loadData(){
+  if(SCRIPT_URL==='YOUR_GOOGLE_APPS_SCRIPT_URL'){
+    allData=getDemoData(); renderAll(); return;
+  }
+  try{
+    var res=await fetch(SCRIPT_URL+'?action=getAll');
+    var json=await res.json();
+    allData=json.data||[];
+  }catch(e){
+    allData=getDemoData();
+  }
+  renderAll();
+}
+
+function renderAll(){
+  document.getElementById('lastUpdate').textContent='อัปเดต: '+new Date().toLocaleTimeString('th-TH');
+  // stats — count individual defect rows
+  var total=0,pass=0,fail=0;
+  allData.forEach(function(sub){
+    (sub.items||[]).forEach(function(it){
+      total++;
+      if(it.result==='pass')pass++;
+      else if(it.result==='fail')fail++;
+    });
+  });
+  document.getElementById('statTotal').textContent=total;
+  document.getElementById('statPass').textContent=pass;
+  document.getElementById('statFail').textContent=fail;
+  renderTable();
+}
+
+function renderTable(){
+  var fText=(document.getElementById('filterText').value||'').toLowerCase();
+  var fRes=document.getElementById('filterResult').value;
+  var rows='';
+  var rowNum=0;
+  allData.forEach(function(sub,si){
+    (sub.items||[]).forEach(function(it){
+      var txt=(it.desc+sub.location+sub.inspectDate).toLowerCase();
+      if(fText && txt.indexOf(fText)<0) return;
+      if(fRes && it.result!==fRes) return;
+      rowNum++;
+      var badge=it.result==='pass'?'<span class="badge-pass">✅ ผ่าน</span>'
+               :it.result==='fail'?'<span class="badge-fail">❌ ไม่ผ่าน</span>'
+               :'<span class="badge-pending">— รอ —</span>';
+      var bThumb=it.beforeImg?'<img class="thumb" src="'+it.beforeImg+'" onclick="viewImg(this.src)" title="Before">':'—';
+      var aThumb=it.afterImg?'<img class="thumb" src="'+it.afterImg+'" onclick="viewImg(this.src)" title="After">':'—';
+      var submitted=sub.submittedAt?new Date(sub.submittedAt).toLocaleString('th-TH'):'—';
+      rows+='<tr>'
+        +'<td>'+rowNum+'</td>'
+        +'<td>'+sub.inspectDate+'</td>'
+        +'<td>'+sub.location+'</td>'
+        +'<td style="max-width:180px">'+it.desc+'</td>'
+        +'<td>'+bThumb+'</td>'
+        +'<td>'+aThumb+'</td>'
+        +'<td>'+it.doneDate+'</td>'
+        +'<td>'+badge+(it.reason?'<br><span style="font-size:10px;color:#c0392b">'+it.reason+'</span>':'')+'</td>'
+        +'<td style="white-space:nowrap;font-size:11px">'+submitted+'</td>'
+        +'<td><button class="btn-view" onclick="viewDetail('+si+','+it.no+')">ดู</button></td>'
+        +'</tr>';
+    });
+  });
+  document.getElementById('tableBody').innerHTML=rows||'<tr><td colspan="10" class="empty-state">ไม่มีข้อมูลที่ตรงกับการค้นหา</td></tr>';
+}
+
+function viewDetail(si, no){
+  var sub=allData[si]; if(!sub)return;
+  var it=(sub.items||[]).find(function(x){return x.no==no;})||{};
+  var resultLabel=it.result==='pass'?'<b style="color:#27ae60">✅ ผ่าน</b>'
+                 :it.result==='fail'?'<b style="color:#e74c3c">❌ ไม่ผ่าน</b>':'—';
+  document.getElementById('modalTitle').textContent='รายการ #'+no+' — '+sub.location;
+  document.getElementById('modalBody').innerHTML=
+    '<div class="modal-imgs">'
+    +(it.beforeImg?'<div><div style="font-size:11px;font-weight:600;color:#555;margin-bottom:4px">Before</div><img src="'+it.beforeImg+'"></div>':'')
+    +(it.afterImg?'<div><div style="font-size:11px;font-weight:600;color:#555;margin-bottom:4px">After</div><img src="'+it.afterImg+'"></div>':'')
+    +'</div>'
+    +'<div class="modal-meta">'
+    +'<div><span>วันที่ตรวจสอบ:</span> '+sub.inspectDate+'</div>'
+    +'<div><span>Location:</span> '+sub.location+'</div>'
+    +'<div><span>รายการ:</span> '+it.desc+'</div>'
+    +'<div><span>วันที่แล้วเสร็จ:</span> '+it.doneDate+'</div>'
+    +'<div><span>ผลการตรวจสอบ:</span> '+resultLabel+'</div>'
+    +(it.reason?'<div><span>เหตุผล:</span> '+it.reason+'</div>':'')
+    +'<div><span>ผู้ออก Defect:</span> '+(sub.sigNames&&sub.sigNames[0]?sub.sigNames[0]:'—')+'</div>'
+    +'<div><span>ผู้ส่งมอบ:</span> '+(sub.sigNames&&sub.sigNames[1]?sub.sigNames[1]:'—')+'</div>'
+    +'<div><span>ผู้อนุมัติ:</span> '+(sub.sigNames&&sub.sigNames[2]?sub.sigNames[2]:'—')+'</div>'
+    +'</div>';
+  document.getElementById('modalBg').classList.add('show');
+}
+function closeModal(){document.getElementById('modalBg').classList.remove('show');}
+function viewImg(src){window.open(src,'_blank');}
+document.getElementById('modalBg').addEventListener('click',function(e){if(e.target===this)closeModal();});
+
+/* ── DEMO DATA ── แสดงเมื่อยังไม่ได้ตั้งค่า Script URL */
+function getDemoData(){
+  return [{
+    inspectDate:'2026-03-10', location:'อาคาร A ชั้น 3',
+    submittedAt:'2026-03-10T09:00:00Z',
+    sigNames:['สมชาย ใจดี','วิภา รักงาน','ผู้จัดการ'],
+    items:[
+      {no:1,desc:'ประตูห้องประชุมปิดไม่สนิท',doneDate:'2026-03-12',result:'pass',reason:'',beforeImg:'',afterImg:''},
+      {no:2,desc:'ไฟในห้องน้ำชำรุด',doneDate:'2026-03-11',result:'fail',reason:'รออะไหล่',beforeImg:'',afterImg:''}
+    ]
+  }];
+}
+
+/* ── INIT ── */
+window.addEventListener('DOMContentLoaded',function(){
+  if(sessionStorage.getItem('adminOk')==='1'){
+    document.getElementById('loginWrap').style.display='none';
+    document.getElementById('adminWrap').style.display='block';
+    loadData();
+  }
+  document.getElementById('adminUser').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('adminPass').focus();});
+});
+</script>
+</body>
+</html>
