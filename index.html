@@ -288,9 +288,7 @@ function toast(msg, err) {
 
 // submit
 document.getElementById('btnSubmit').addEventListener('click', async function() {
-  if (SCRIPT_URL === 'https://script.google.com/macros/s/AKfycbzGynlRDGVKLiA6gMIkrkHUKJbPO5dSaEQW9oQWl88TAjKDVQIEWVCLxJM0W7JCqJQG8A/exec') {
-    toast('⚠️ ยังไม่ได้ใส่ Google Apps Script URL ครับ', true); return;
-  }
+  // URL is set
   var date = document.getElementById('iDate').value;
   var loc  = document.getElementById('iLoc').value;
   if (!date || !loc) { toast('กรุณากรอก วันที่ และ Location ก่อนครับ', true); return; }
