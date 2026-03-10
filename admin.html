@@ -103,7 +103,7 @@ tr:hover td{background:#f5f8ff}
 
   <div class="page-wrap">
     <div class="stats-row">
-      <div class="stat-card"><div class="stat-num" id="statTotal" style="color:#1a3a5c;font-size:22px;word-break:break-all" >—</div><div class="stat-lbl">Location</div></div>
+      <div class="stat-card"><div class="stat-num" id="statTotal" style="color:#1a3a5c">—</div><div class="stat-lbl">Location</div></div>
       <div class="stat-card"><div class="stat-num" id="statPass" style="color:#27ae60">—</div><div class="stat-lbl">รายการที่ผ่าน</div></div>
       <div class="stat-card"><div class="stat-num" id="statFail" style="color:#e74c3c">—</div><div class="stat-lbl">รายการที่ไม่ผ่าน</div></div>
     </div>
@@ -145,7 +145,7 @@ tr:hover td{background:#f5f8ff}
 
 <script>
 // ── CONFIG ── ต้องตรงกับ index.html
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw8Z9i_vwy2mAeoYtwlJMYiAl5aPH7ou1RQ9vUeC6-MhNWypkJxnWG0UKGWXgSuXS5-Zg/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzSnuAp2HZXTdWDAG7Ke-xjxGNA72t0AvDLqYSs4pnAWkw3cMA9OQu3ooGloyccE93d_Q/exec';
 // Admin credentials (เปลี่ยนได้)
 const ADMIN_USER = 'admin';
 const ADMIN_PASS = 'innova2024';
@@ -173,15 +173,15 @@ function logout(){
 
 /* ── LOAD DATA ── */
 async function loadData(){
-  if(SCRIPT_URL==='YOUR_GOOGLE_APPS_SCRIPT_URL'){
-    allData=getDemoData(); renderAll(); return;
-  }
+  document.getElementById('tableBody').innerHTML='<tr><td colspan="10" class="empty-state">⏳ กำลังโหลด...</td></tr>';
   try{
-    var res=await fetch(SCRIPT_URL+'?action=getAll');
+    var res=await fetch(SCRIPT_URL+'?action=getAll', {method:'GET', cache:'no-cache'});
     var json=await res.json();
     allData=json.data||[];
   }catch(e){
-    allData=getDemoData();
+    console.error('Load error:',e);
+    allData=[];
+    document.getElementById('tableBody').innerHTML='<tr><td colspan="10" class="empty-state" style="color:#e74c3c">❌ โหลดข้อมูลไม่ได้: '+e.message+'</td></tr>';
   }
   renderAll();
 }
@@ -197,9 +197,10 @@ function renderAll(){
       else if(it.result==='fail')fail++;
     });
   });
-  // get unique locations
-  var locs = [...new Set(allData.map(function(s){return s.location||'—';}))];
-  document.getElementById('statTotal').textContent = locs.length > 0 ? locs.join(', ') : '—';
+  // นับจำนวน Location ที่ไม่ซ้ำกัน
+  var locs = allData.map(function(s){return s.location||'';}).filter(function(l){return l!='';});
+  var uniqueLocs = locs.filter(function(v,i,a){return a.indexOf(v)===i;});
+  document.getElementById('statTotal').textContent = uniqueLocs.length || 0;
   document.getElementById('statPass').textContent=pass;
   document.getElementById('statFail').textContent=fail;
   renderTable();
