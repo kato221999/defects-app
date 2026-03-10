@@ -456,7 +456,25 @@ document.getElementById('btnPrint').addEventListener('click', async function() {
 
     var date = document.getElementById('iDate').value || new Date().toISOString().slice(0,10);
     var loc  = document.getElementById('iLoc').value  || 'defects';
-    pdf.save('Defects_' + date + '_' + loc + '.pdf');
+    var filename = 'Defects_' + date + '_' + loc + '.pdf';
+
+    // ตรวจสอบว่าเป็น mobile หรือไม่
+    var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+      // เปิด PDF ใน tab ใหม่ให้ user กด Share/Save เอง
+      var pdfBlob = pdf.output('blob');
+      var blobUrl = URL.createObjectURL(pdfBlob);
+      var a = document.createElement('a');
+      a.href = blobUrl;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(blobUrl); }, 5000);
+    } else {
+      pdf.save(filename);
+    }
 
   } catch(err) {
     // คืนค่า input กลับถ้า error
