@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Defects List</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Sarabun',sans-serif;background:#eef1f6;color:#222}
@@ -15,7 +17,7 @@ body{font-family:'Sarabun',sans-serif;background:#eef1f6;color:#222}
 .btn-green{background:#27ae60;color:#fff}
 .btn-red{background:#e74c3c;color:#fff;font-size:14px;padding:10px 26px}
 .btn-ghost{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)}
-.btn-pdf{background:#8e44ad;color:#fff}
+.btn-pdf{background:#8e44ad;color:#fff}.btn-pdf:hover{background:#6c3483}
 .wrap{max-width:960px;margin:24px auto 60px;padding:0 14px}
 .card{background:#fff;border-radius:10px;box-shadow:0 2px 14px rgba(0,0,0,.08);overflow:hidden;margin-bottom:0}
 /* header */
@@ -170,7 +172,7 @@ canvas{display:block;touch-action:none;cursor:crosshair;width:100%;height:78px}
 <div class="ov" id="ov"><div class="spin"></div><p>กำลังบันทึก...</p></div>
 
 <script>
-var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzSnuAp2HZXTdWDAG7Ke-xjxGNA72t0AvDLqYSs4pnAWkw3cMA9OQu3ooGloyccE93d_Q/exec';
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxCddbpGzINB7M-WyBpGcnVAHNb1PqeAxJyLNQNUlYDQG3GlV5OY3UZTiPx4G14Fz9ieA/exec';
 var itemCount = 0;
 
 function makeItem() {
@@ -358,25 +360,94 @@ window.addEventListener('DOMContentLoaded', function() {
   makeItem();
   setTimeout(function(){ [0,1,2].forEach(initCv); }, 150);
 
-// Print PDF
-document.getElementById('btnPrint').addEventListener('click', function() {
-  // snapshot signatures
+// Export PDF using html2canvas + jsPDF
+document.getElementById('btnPrint').addEventListener('click', async function() {
+  var btn = document.getElementById('btnPrint');
+  btn.textContent = '⏳ กำลังสร้าง...';
+  btn.disabled = true;
+
+  // snapshot signatures into img
   [0,1,2].forEach(function(i) {
     var cv = document.getElementById('cv'+i);
     var wrap = cv ? cv.parentElement : null;
     if (!cv || !wrap) return;
-    var existing = wrap.querySelector('.cv-print');
-    if (existing) existing.remove();
+    var ex = wrap.querySelector('.cv-print');
+    if (ex) ex.remove();
     var img = document.createElement('img');
     img.className = 'cv-print';
     img.src = cv.toDataURL('image/png');
+    img.style.cssText = 'width:100%;height:78px;object-fit:contain;display:block;';
+    cv.style.display = 'none';
     wrap.insertBefore(img, cv);
   });
-  window.print();
+
+  // hide toolbar & buttons
+  var toolbar = document.querySelector('.bar');
+  var addRow  = document.querySelector('.add-row');
+  var subRow  = document.querySelector('.sub-row');
+  var rmBtns  = document.querySelectorAll('.btn-rm');
+  var sigClrs = document.querySelectorAll('.sg-clr');
+  var fileInps= document.querySelectorAll('.imgbox input[type=file]');
+  toolbar.style.display = 'none';
+  addRow.style.display  = 'none';
+  subRow.style.display  = 'none';
+  rmBtns.forEach(function(e){e.style.display='none';});
+  sigClrs.forEach(function(e){e.style.display='none';});
+  fileInps.forEach(function(e){e.style.display='none';});
+
+  try {
+    var element = document.querySelector('.card');
+    var canvas  = await html2canvas(element, {
+      scale: 2, useCORS: true, allowTaint: true, logging: false,
+      backgroundColor: '#ffffff'
+    });
+
+    var imgData = canvas.toDataURL('image/jpeg', 0.95);
+    var { jsPDF } = window.jspdf;
+    var pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+
+    var pageW  = pdf.internal.pageSize.getWidth();
+    var pageH  = pdf.internal.pageSize.getHeight();
+    var margin = 8;
+    var imgW   = pageW - margin * 2;
+    var imgH   = (canvas.height * imgW) / canvas.width;
+
+    var posY = margin;
+    if (imgH <= pageH - margin * 2) {
+      pdf.addImage(imgData, 'JPEG', margin, posY, imgW, imgH);
+    } else {
+      // multi-page
+      var pageImgH = pageH - margin * 2;
+      var pages = Math.ceil(imgH / pageImgH);
+      for (var p = 0; p < pages; p++) {
+        if (p > 0) pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', margin, margin - p * pageImgH, imgW, imgH);
+      }
+    }
+
+    var date = document.getElementById('iDate').value || new Date().toISOString().slice(0,10);
+    var loc  = document.getElementById('iLoc').value  || 'defects';
+    pdf.save('Defects_' + date + '_' + loc + '.pdf');
+
+  } catch(err) {
+    alert('เกิดข้อผิดพลาด: ' + err.message);
+  }
+
   // restore
-  setTimeout(function(){
-    document.querySelectorAll('.cv-print').forEach(function(el){el.remove();});
-  }, 2000);
+  toolbar.style.display = '';
+  addRow.style.display  = '';
+  subRow.style.display  = '';
+  rmBtns.forEach(function(e){e.style.display='';});
+  sigClrs.forEach(function(e){e.style.display='';});
+  fileInps.forEach(function(e){e.style.display='';});
+  document.querySelectorAll('.cv-print').forEach(function(el){el.remove();});
+  [0,1,2].forEach(function(i){
+    var cv = document.getElementById('cv'+i); 
+    if(cv) cv.style.display='block';
+  });
+
+  btn.textContent = '🖨 PDF';
+  btn.disabled = false;
 });
 
 });
