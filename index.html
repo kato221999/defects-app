@@ -15,6 +15,7 @@ body{font-family:'Sarabun',sans-serif;background:#eef1f6;color:#222}
 .btn-green{background:#27ae60;color:#fff}
 .btn-red{background:#e74c3c;color:#fff;font-size:14px;padding:10px 26px}
 .btn-ghost{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)}
+.btn-pdf{background:#8e44ad;color:#fff}
 .wrap{max-width:960px;margin:24px auto 60px;padding:0 14px}
 .card{background:#fff;border-radius:10px;box-shadow:0 2px 14px rgba(0,0,0,.08);overflow:hidden;margin-bottom:0}
 /* header */
@@ -80,6 +81,25 @@ canvas{display:block;touch-action:none;cursor:crosshair;width:100%;height:78px}
 .spin{width:44px;height:44px;border:5px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:sp .8s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 .ov p{color:#fff;font-size:15px;font-weight:600}
+
+@media print {
+  @page{size:A4 portrait;margin:10mm}
+  .bar{display:none!important}
+  .add-row{display:none!important}
+  .btn-rm{display:none!important}
+  .sg-clr{display:none!important}
+  .sub-row{display:none!important}
+  body{background:#fff!important}
+  .wrap{max-width:100%;margin:0;padding:0}
+  .card{box-shadow:none!important;border-radius:0}
+  .item{break-inside:avoid;page-break-inside:avoid}
+  .imgbox input[type=file]{display:none!important}
+  .imgbox .ico{display:none!important}
+  .imgbox .hint{display:none!important}
+  canvas{display:none!important}
+  .cv-print{display:block!important;max-width:100%;height:78px;object-fit:contain}
+}
+.cv-print{display:none}
 </style>
 </head>
 <body>
@@ -90,6 +110,7 @@ canvas{display:block;touch-action:none;cursor:crosshair;width:100%;height:78px}
     <button class="btn btn-green" id="btnAdd">＋ เพิ่มรายการ</button>
     <button class="btn btn-ghost" id="btnClear">🗑 ล้าง</button>
     <a class="btn btn-ghost" href="admin.html">🔐 Admin</a>
+    <button class="btn btn-pdf" id="btnPrint">🖨 PDF</button>
   </div>
 </div>
 
@@ -336,6 +357,28 @@ window.addEventListener('DOMContentLoaded', function() {
   document.getElementById('iDate').value = new Date().toISOString().slice(0,10);
   makeItem();
   setTimeout(function(){ [0,1,2].forEach(initCv); }, 150);
+
+// Print PDF
+document.getElementById('btnPrint').addEventListener('click', function() {
+  // snapshot signatures
+  [0,1,2].forEach(function(i) {
+    var cv = document.getElementById('cv'+i);
+    var wrap = cv ? cv.parentElement : null;
+    if (!cv || !wrap) return;
+    var existing = wrap.querySelector('.cv-print');
+    if (existing) existing.remove();
+    var img = document.createElement('img');
+    img.className = 'cv-print';
+    img.src = cv.toDataURL('image/png');
+    wrap.insertBefore(img, cv);
+  });
+  window.print();
+  // restore
+  setTimeout(function(){
+    document.querySelectorAll('.cv-print').forEach(function(el){el.remove();});
+  }, 2000);
+});
+
 });
 </script>
 </body>
