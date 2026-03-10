@@ -109,10 +109,8 @@ canvas{display:block;touch-action:none;cursor:crosshair;width:100%;height:78px}
 <div class="bar">
   <span class="bar-title">📋 Defects List — iNNOVATECH SOLUTION</span>
   <div class="bar-btns">
-    <button class="btn btn-green" id="btnAdd">＋ เพิ่มรายการ</button>
     <button class="btn btn-ghost" id="btnClear">🗑 ล้าง</button>
     <a class="btn btn-ghost" href="admin.html">🔐 Admin</a>
-    <button class="btn btn-pdf" id="btnPrint">🖨 PDF</button>
   </div>
 </div>
 
@@ -161,8 +159,9 @@ canvas{display:block;touch-action:none;cursor:crosshair;width:100%;height:78px}
     </div>
   </div>
 
-  <div class="sub-row">
+  <div class="sub-row" style="display:flex;gap:12px;align-items:center;justify-content:center;">
     <button class="btn btn-red" id="btnSubmit">💾 บันทึกและส่งข้อมูล</button>
+    <button class="btn btn-pdf" id="btnPrint">🖨 บันทึกเป็น PDF</button>
   </div>
 
 </div>
@@ -396,10 +395,40 @@ document.getElementById('btnPrint').addEventListener('click', async function() {
   fileInps.forEach(function(e){e.style.display='none';});
 
   try {
+    // แปลง input/textarea/select → div แสดงค่าจริง ก่อน capture
+    var replaced = [];
+    document.querySelectorAll('input[type=text], input[type=date], textarea, select').forEach(function(el) {
+      var val = el.tagName === 'SELECT'
+        ? (el.options[el.selectedIndex] ? el.options[el.selectedIndex].text : '')
+        : el.value;
+      var div = document.createElement('div');
+      div.textContent = val || ' ';
+      div.style.cssText = window.getComputedStyle(el).cssText;
+      div.style.minHeight = el.offsetHeight + 'px';
+      div.style.width     = el.offsetWidth  + 'px';
+      div.style.padding   = '7px 10px';
+      div.style.border    = '1.5px solid #cdd6e4';
+      div.style.borderRadius = '6px';
+      div.style.fontFamily = 'Sarabun, sans-serif';
+      div.style.fontSize   = '13px';
+      div.style.background = '#fff';
+      div.style.boxSizing  = 'border-box';
+      div.style.wordBreak  = 'break-word';
+      el.parentNode.insertBefore(div, el);
+      el.style.display = 'none';
+      replaced.push({el: el, div: div});
+    });
+
     var element = document.querySelector('.card');
     var canvas  = await html2canvas(element, {
       scale: 2, useCORS: true, allowTaint: true, logging: false,
       backgroundColor: '#ffffff'
+    });
+
+    // คืนค่า input กลับ
+    replaced.forEach(function(r) {
+      r.el.style.display = '';
+      r.div.remove();
     });
 
     var imgData = canvas.toDataURL('image/jpeg', 0.95);
@@ -430,6 +459,9 @@ document.getElementById('btnPrint').addEventListener('click', async function() {
     pdf.save('Defects_' + date + '_' + loc + '.pdf');
 
   } catch(err) {
+    // คืนค่า input กลับถ้า error
+    document.querySelectorAll('input, textarea, select').forEach(function(el){ el.style.display=''; });
+    document.querySelectorAll('[data-pdf-div]').forEach(function(d){ d.remove(); });
     alert('เกิดข้อผิดพลาด: ' + err.message);
   }
 
