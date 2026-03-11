@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Defects List</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Sarabun',sans-serif;background:#eef1f6;color:#222}
@@ -246,6 +245,7 @@ canvas{display:block;touch-action:none;cursor:crosshair;width:100%;height:78px}
 <div class="toast" id="toast"></div>
 <div class="ov" id="ov"><div class="spin"></div><p>กำลังบันทึก...</p></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxCddbpGzINB7M-WyBpGcnVAHNb1PqeAxJyLNQNUlYDQG3GlV5OY3UZTiPx4G14Fz9ieA/exec';
 var itemCount = 0;
@@ -730,9 +730,11 @@ document.getElementById('btnLine').addEventListener('click', async function() {
   btn.textContent='📤 แชร์ไป LINE'; btn.disabled=false;
 });
 // init
-document.getElementById('iDate').value = new Date().toISOString().slice(0,10);
-makeItem();
-[0,1,2].forEach(initCv);
+(function() {
+  document.getElementById('iDate').value = new Date().toISOString().slice(0,10);
+  makeItem();
+  setTimeout(function(){ [0,1,2].forEach(initCv); }, 50);
+})();
 </script>
 </body>
 </html>
