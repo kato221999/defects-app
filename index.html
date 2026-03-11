@@ -237,7 +237,6 @@ canvas{display:block;touch-action:none;cursor:crosshair;width:100%;height:78px}
 
   <div class="sub-row" style="display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;">
     <button class="btn btn-red" id="btnSubmit">💾 บันทึกและส่งข้อมูล</button>
-    <button class="btn btn-pdf" id="btnPrint">🖨 บันทึกเป็น PDF</button>
     <button class="btn btn-line" id="btnLine">📤 แชร์ไป LINE</button>
   </div>
 
@@ -302,11 +301,13 @@ function makeItem() {
       var file = this.files[0];
       if (!file) return;
       var rd = new FileReader();
-      rd.onload = function(e) {
-        imgEl.src = e.target.result;
-        imgEl.style.display = 'block';
-        box.querySelector('.ico').style.display = 'none';
-        box.querySelector('.hint').style.display = 'none';
+      rd.onload = function(ev) {
+        fixOrientation(ev.target.result).then(function(fixed) {
+          imgEl.src = fixed;
+          imgEl.style.display = 'block';
+          box.querySelector('.ico').style.display = 'none';
+          box.querySelector('.hint').style.display = 'none';
+        });
       };
       rd.readAsDataURL(file);
     });
@@ -355,8 +356,9 @@ document.getElementById('btnClear').addEventListener('click', function() {
 function initCv(id) {
   var cv = document.getElementById('cv' + id);
   if (!cv) return;
-  cv.width = cv.parentElement.clientWidth || 280;
-  cv.height = 78;
+  var pw = cv.parentElement ? cv.parentElement.clientWidth : 0;
+  cv.width  = pw > 0 ? pw : (window.innerWidth > 600 ? 280 : window.innerWidth - 80);
+  cv.height = 100;
   var ctx = cv.getContext('2d');
   var down = false;
   function pt(e) {
@@ -442,6 +444,84 @@ window.addEventListener('DOMContentLoaded', function() {
 
 
 
+
+
+// ===== แก้ EXIF orientation ของรูปจากมือถือ =====
+function fixOrientation(src) {
+  return new Promise(function(resolve) {
+    var img = new Image();
+    img.onload = function() {
+      // อ่าน EXIF orientation จาก binary
+      var canvas = document.createElement('canvas');
+      var ctx = canvas.getContext('2d');
+      var orientation = 1;
+
+      // อ่าน ArrayBuffer เพื่อหา EXIF
+      try {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', src, false); // sync
+        xhr.responseType = 'arraybuffer';
+        // ถ้าเป็น data URL ให้แปลงก่อน
+      } catch(e) {}
+
+      // วิธีง่ายกว่า: อ่าน EXIF จาก dataURL ผ่าน binary string
+      if (src.indexOf('data:image') === 0) {
+        try {
+          var base64 = src.split(',')[1];
+          var binary = atob(base64);
+          var view = new DataView(new ArrayBuffer(binary.length));
+          for (var i = 0; i < binary.length; i++) view.setUint8(i, binary.charCodeAt(i));
+
+          if (view.getUint16(0) === 0xFFD8) { // JPEG
+            var offset = 2;
+            while (offset < view.byteLength) {
+              if (view.getUint16(offset) === 0xFFE1) { // APP1
+                if (view.getUint32(offset+4) === 0x45786966) { // Exif
+                  var little = view.getUint16(offset+10) === 0x4949;
+                  var ifdOffset = view.getUint32(offset+14, little);
+                  var entries = view.getUint16(offset+10+ifdOffset, little);
+                  for (var j = 0; j < entries; j++) {
+                    var tag = view.getUint16(offset+10+ifdOffset+2+j*12, little);
+                    if (tag === 0x0112) {
+                      orientation = view.getUint16(offset+10+ifdOffset+2+j*12+8, little);
+                      break;
+                    }
+                  }
+                }
+                break;
+              }
+              offset += 2 + view.getUint16(offset+2);
+            }
+          }
+        } catch(e) { orientation = 1; }
+      }
+
+      // หมุน canvas ตาม orientation
+      var w = img.naturalWidth, h = img.naturalHeight;
+      if (orientation >= 5 && orientation <= 8) {
+        canvas.width = h; canvas.height = w;
+      } else {
+        canvas.width = w; canvas.height = h;
+      }
+
+      switch(orientation) {
+        case 2: ctx.transform(-1,0,0,1,w,0); break;
+        case 3: ctx.transform(-1,0,0,-1,w,h); break;
+        case 4: ctx.transform(1,0,0,-1,0,h); break;
+        case 5: ctx.transform(0,1,1,0,0,0); break;
+        case 6: ctx.transform(0,1,-1,0,h,0); break;
+        case 7: ctx.transform(0,-1,-1,0,h,w); break;
+        case 8: ctx.transform(0,-1,1,0,0,w); break;
+        default: break;
+      }
+
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = function() { resolve(src); };
+    img.src = src;
+  });
+}
 
 // ===== สร้าง PDF ด้วย Canvas (รองรับภาษาไทยทุก platform) =====
 async function buildPDF() {
@@ -545,8 +625,10 @@ async function buildPDF() {
 
     if(hasBefore||hasAfter){
       var imgW=(cw-6)/2;
-      if(hasBefore){ addTextImg('Before — รูปก่อนแก้ไข',mg+2,iy,7.5,NAVY,true); try{pdf.addImage(bimg.src,'JPEG',mg+2,iy+4,imgW-2,40);}catch(e){} }
-      if(hasAfter){ addTextImg('After — รูปหลังแก้ไข',mg+imgW+4,iy,7.5,NAVY,true); try{pdf.addImage(aimg.src,'JPEG',mg+imgW+4,iy+4,imgW-2,40);}catch(e){} }
+      var bSrc = hasBefore ? await fixOrientation(bimg.src) : null;
+      var aSrc = hasAfter  ? await fixOrientation(aimg.src) : null;
+      if(bSrc){ addTextImg('Before — รูปก่อนแก้ไข',mg+2,iy,7.5,NAVY,true); try{pdf.addImage(bSrc,'JPEG',mg+2,iy+4,imgW-2,40);}catch(e){} }
+      if(aSrc){ addTextImg('After — รูปหลังแก้ไข',mg+imgW+4,iy,7.5,NAVY,true); try{pdf.addImage(aSrc,'JPEG',mg+imgW+4,iy+4,imgW-2,40);}catch(e){} }
       iy+=imgH;
     }
 
@@ -573,7 +655,16 @@ async function buildPDF() {
     try{ pdf.addImage(t1.data,'PNG',sx+(sw-Math.min(t1.w,sw-2))/2,y+2,Math.min(t1.w,sw-2),t1.h); }catch(e){}
     if(t2){ try{ pdf.addImage(t2.data,'PNG',sx+(sw-Math.min(t2.w,sw-2))/2,y+6,Math.min(t2.w,sw-2),t2.h); }catch(e){} }
     var cv=document.getElementById('cv'+i);
-    if(cv){ try{ pdf.addImage(cv.toDataURL('image/png'),'PNG',sx+3,y+11,sw-6,22); }catch(e){} }
+    if(cv && cv.width>0 && cv.height>0){
+      try{
+        // ตรวจสอบว่ามีการเซ็นหรือเปล่า
+        var sigCtx=cv.getContext('2d');
+        var sigData=sigCtx.getImageData(0,0,cv.width,cv.height).data;
+        var hasSig=false;
+        for(var si=3;si<sigData.length;si+=4){ if(sigData[si]>0){hasSig=true;break;} }
+        if(hasSig) pdf.addImage(cv.toDataURL('image/png'),'PNG',sx+3,y+11,sw-6,22);
+      }catch(e){}
+    }
     pdf.setDrawColor(...GRAY); pdf.setLineWidth(0.4); pdf.line(sx+4,y+36,sx+sw-4,y+36);
     var sname=(document.getElementById('sn'+i)||{value:''}).value||'';
     if(sname){ var st=textImg(sname,8,'#1e1e1e',false); try{ pdf.addImage(st.data,'PNG',sx+(sw-Math.min(st.w,sw-4))/2,y+38,Math.min(st.w,sw-4),st.h); }catch(e){} }
@@ -613,8 +704,28 @@ document.getElementById('btnLine').addEventListener('click', async function() {
     var filename='Defects_'+date+'_'+loc+'.pdf';
     var blob=pdf.output('blob');
     var file=new File([blob],filename,{type:'application/pdf'});
-    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+    var isIOS=/iPhone|iPad|iPod/i.test(navigator.userAgent);
+    var isAndroid=/Android/i.test(navigator.userAgent);
+
+    if(isIOS && navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+      // iOS — share file ตรง
       await navigator.share({files:[file]});
+    } else if(isAndroid){
+      // Android — download ก่อนแล้วเปิด LINE เอง
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement('a');
+      a.href=url; a.download=filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); },5000);
+      setTimeout(function(){
+        alert('✅ ดาวน์โหลด PDF แล้ว!
+
+วิธีส่งเข้า LINE:
+1. เปิด LINE
+2. เลือกห้องแชท
+3. กดไอคอนรูปภาพ/ไฟล์
+4. เลือกไฟล์ที่ดาวน์โหลด');
+      },800);
     } else if(navigator.share){
       var url=URL.createObjectURL(blob);
       await navigator.share({url:url});
