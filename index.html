@@ -250,6 +250,84 @@ canvas{display:block;touch-action:none;cursor:crosshair;width:100%;height:78px}
 var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxCddbpGzINB7M-WyBpGcnVAHNb1PqeAxJyLNQNUlYDQG3GlV5OY3UZTiPx4G14Fz9ieA/exec';
 var itemCount = 0;
 
+// ===== แก้ EXIF orientation ของรูปจากมือถือ =====
+function fixOrientation(src) {
+  return new Promise(function(resolve) {
+    var img = new Image();
+    img.onload = function() {
+      // อ่าน EXIF orientation จาก binary
+      var canvas = document.createElement('canvas');
+      var ctx = canvas.getContext('2d');
+      var orientation = 1;
+
+      // อ่าน ArrayBuffer เพื่อหา EXIF
+      try {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', src, false); // sync
+        xhr.responseType = 'arraybuffer';
+        // ถ้าเป็น data URL ให้แปลงก่อน
+      } catch(e) {}
+
+      // วิธีง่ายกว่า: อ่าน EXIF จาก dataURL ผ่าน binary string
+      if (src.indexOf('data:image') === 0) {
+        try {
+          var base64 = src.split(',')[1];
+          var binary = atob(base64);
+          var view = new DataView(new ArrayBuffer(binary.length));
+          for (var i = 0; i < binary.length; i++) view.setUint8(i, binary.charCodeAt(i));
+
+          if (view.getUint16(0) === 0xFFD8) { // JPEG
+            var offset = 2;
+            while (offset < view.byteLength) {
+              if (view.getUint16(offset) === 0xFFE1) { // APP1
+                if (view.getUint32(offset+4) === 0x45786966) { // Exif
+                  var little = view.getUint16(offset+10) === 0x4949;
+                  var ifdOffset = view.getUint32(offset+14, little);
+                  var entries = view.getUint16(offset+10+ifdOffset, little);
+                  for (var j = 0; j < entries; j++) {
+                    var tag = view.getUint16(offset+10+ifdOffset+2+j*12, little);
+                    if (tag === 0x0112) {
+                      orientation = view.getUint16(offset+10+ifdOffset+2+j*12+8, little);
+                      break;
+                    }
+                  }
+                }
+                break;
+              }
+              offset += 2 + view.getUint16(offset+2);
+            }
+          }
+        } catch(e) { orientation = 1; }
+      }
+
+      // หมุน canvas ตาม orientation
+      var w = img.naturalWidth, h = img.naturalHeight;
+      if (orientation >= 5 && orientation <= 8) {
+        canvas.width = h; canvas.height = w;
+      } else {
+        canvas.width = w; canvas.height = h;
+      }
+
+      switch(orientation) {
+        case 2: ctx.transform(-1,0,0,1,w,0); break;
+        case 3: ctx.transform(-1,0,0,-1,w,h); break;
+        case 4: ctx.transform(1,0,0,-1,0,h); break;
+        case 5: ctx.transform(0,1,1,0,0,0); break;
+        case 6: ctx.transform(0,1,-1,0,h,0); break;
+        case 7: ctx.transform(0,-1,-1,0,h,w); break;
+        case 8: ctx.transform(0,-1,1,0,0,w); break;
+        default: break;
+      }
+
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = function() { resolve(src); };
+    img.src = src;
+  });
+}
+
+// ===== สร้าง PDF ด้วย Canvas (รองรับภาษาไทยทุก platform) =====
 function makeItem() {
   itemCount++;
   var n = itemCount;
@@ -436,94 +514,6 @@ document.getElementById('btnSubmit').addEventListener('click', async function() 
   }
 });
 
-// init
-window.addEventListener('DOMContentLoaded', function() {
-  document.getElementById('iDate').value = new Date().toISOString().slice(0,10);
-  makeItem();
-  setTimeout(function(){ [0,1,2].forEach(initCv); }, 150);
-
-
-
-
-
-// ===== แก้ EXIF orientation ของรูปจากมือถือ =====
-function fixOrientation(src) {
-  return new Promise(function(resolve) {
-    var img = new Image();
-    img.onload = function() {
-      // อ่าน EXIF orientation จาก binary
-      var canvas = document.createElement('canvas');
-      var ctx = canvas.getContext('2d');
-      var orientation = 1;
-
-      // อ่าน ArrayBuffer เพื่อหา EXIF
-      try {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', src, false); // sync
-        xhr.responseType = 'arraybuffer';
-        // ถ้าเป็น data URL ให้แปลงก่อน
-      } catch(e) {}
-
-      // วิธีง่ายกว่า: อ่าน EXIF จาก dataURL ผ่าน binary string
-      if (src.indexOf('data:image') === 0) {
-        try {
-          var base64 = src.split(',')[1];
-          var binary = atob(base64);
-          var view = new DataView(new ArrayBuffer(binary.length));
-          for (var i = 0; i < binary.length; i++) view.setUint8(i, binary.charCodeAt(i));
-
-          if (view.getUint16(0) === 0xFFD8) { // JPEG
-            var offset = 2;
-            while (offset < view.byteLength) {
-              if (view.getUint16(offset) === 0xFFE1) { // APP1
-                if (view.getUint32(offset+4) === 0x45786966) { // Exif
-                  var little = view.getUint16(offset+10) === 0x4949;
-                  var ifdOffset = view.getUint32(offset+14, little);
-                  var entries = view.getUint16(offset+10+ifdOffset, little);
-                  for (var j = 0; j < entries; j++) {
-                    var tag = view.getUint16(offset+10+ifdOffset+2+j*12, little);
-                    if (tag === 0x0112) {
-                      orientation = view.getUint16(offset+10+ifdOffset+2+j*12+8, little);
-                      break;
-                    }
-                  }
-                }
-                break;
-              }
-              offset += 2 + view.getUint16(offset+2);
-            }
-          }
-        } catch(e) { orientation = 1; }
-      }
-
-      // หมุน canvas ตาม orientation
-      var w = img.naturalWidth, h = img.naturalHeight;
-      if (orientation >= 5 && orientation <= 8) {
-        canvas.width = h; canvas.height = w;
-      } else {
-        canvas.width = w; canvas.height = h;
-      }
-
-      switch(orientation) {
-        case 2: ctx.transform(-1,0,0,1,w,0); break;
-        case 3: ctx.transform(-1,0,0,-1,w,h); break;
-        case 4: ctx.transform(1,0,0,-1,0,h); break;
-        case 5: ctx.transform(0,1,1,0,0,0); break;
-        case 6: ctx.transform(0,1,-1,0,h,0); break;
-        case 7: ctx.transform(0,-1,-1,0,h,w); break;
-        case 8: ctx.transform(0,-1,1,0,0,w); break;
-        default: break;
-      }
-
-      ctx.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL('image/jpeg', 0.85));
-    };
-    img.onerror = function() { resolve(src); };
-    img.src = src;
-  });
-}
-
-// ===== สร้าง PDF ด้วย Canvas (รองรับภาษาไทยทุก platform) =====
 async function buildPDF() {
   var { jsPDF } = window.jspdf;
   var pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
@@ -739,11 +729,10 @@ document.getElementById('btnLine').addEventListener('click', async function() {
   } catch(e){ if(e.name!=='AbortError') alert('เกิดข้อผิดพลาด: '+e.message); }
   btn.textContent='📤 แชร์ไป LINE'; btn.disabled=false;
 });
-
-
-
-
-});
+// init
+document.getElementById('iDate').value = new Date().toISOString().slice(0,10);
+makeItem();
+[0,1,2].forEach(initCv);
 </script>
 </body>
 </html>
