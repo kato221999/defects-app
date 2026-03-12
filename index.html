@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Defects List</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Sarabun',sans-serif;background:#eef1f6;color:#222}
@@ -178,9 +179,7 @@ canvas{display:block;touch-action:none;cursor:crosshair;width:100%;height:78px}
   .co-det { font-size: 9px; }
 }
 </style>
-</head>
 <body>
-
 <div class="bar">
   <span class="bar-title">📋 Defects List — iNNOVATECH SOLUTION</span>
   <div class="bar-btns">
@@ -209,7 +208,39 @@ canvas{display:block;touch-action:none;cursor:crosshair;width:100%;height:78px}
   </div>
 
   <div class="sec-hdr">รายการที่ต้องแก้ไข</div>
-  <div class="items" id="itemList"></div>
+  <div class="items" id="itemList">
+    <div class="item" id="it1">
+      <div class="item-hdr">
+        <div class="badge">1</div>
+        <button class="btn-rm" data-n="1">✕ ลบ</button>
+      </div>
+      <div class="grid2">
+        <div class="df full"><label>รายการที่ต้องแก้ไข</label>
+          <input type="text" id="desc1" placeholder="ระบุรายละเอียดที่ต้องแก้ไข..."></div>
+        <div class="df full img-pair">
+          <div>
+            <label style="display:block;font-size:11.5px;font-weight:600;color:#445;margin-bottom:4px">Before — รูปก่อนแก้ไข</label>
+            <div class="imgbox" id="bw1"><input type="file" accept="image/*"><div class="ico">🖼️</div><div class="hint">คลิกเพื่ออัปโหลดรูป</div><img id="bi1"></div>
+          </div>
+          <div>
+            <label style="display:block;font-size:11.5px;font-weight:600;color:#445;margin-bottom:4px">After — รูปหลังแก้ไข</label>
+            <div class="imgbox" id="aw1"><input type="file" accept="image/*"><div class="ico">🖼️</div><div class="hint">คลิกเพื่ออัปโหลดรูป</div><img id="ai1"></div>
+          </div>
+        </div>
+        <div class="df"><label>วันที่แล้วเสร็จ</label><input type="date" id="dd1"></div>
+        <div class="df"><label>ผลการตรวจสอบ</label>
+          <select id="rs1" style="width:100%;padding:7px 10px;border:1.5px solid #cdd6e4;border-radius:6px;font-family:Sarabun,sans-serif;font-size:13px;background:#fff">
+            <option value="">— เลือก —</option>
+            <option value="pass">✅ ผ่าน</option>
+            <option value="fail">❌ ไม่ผ่าน</option>
+          </select>
+        </div>
+        <div class="df full" id="rndiv1" style="display:none"><label>เหตุผล (กรณีไม่ผ่าน)</label>
+          <textarea id="rn1" placeholder="ระบุเหตุผล..." style="width:100%;min-height:52px;padding:7px 10px;border:1.5px solid #e74c3c;border-radius:6px;font-family:Sarabun,sans-serif;font-size:13px;resize:vertical"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
   <div class="add-row">
     <button class="btn btn-green" id="btnAdd2">＋ เพิ่มรายการ</button>
   </div>
@@ -244,90 +275,58 @@ canvas{display:block;touch-action:none;cursor:crosshair;width:100%;height:78px}
 
 <div class="toast" id="toast"></div>
 <div class="ov" id="ov"><div class="spin"></div><p>กำลังบันทึก...</p></div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <script>
+
 var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxCddbpGzINB7M-WyBpGcnVAHNb1PqeAxJyLNQNUlYDQG3GlV5OY3UZTiPx4G14Fz9ieA/exec';
 var itemCount = 0;
 
-// ===== แก้ EXIF orientation ของรูปจากมือถือ =====
+/* ─── fixOrientation ─── */
 function fixOrientation(src) {
   return new Promise(function(resolve) {
     var img = new Image();
     img.onload = function() {
-      // อ่าน EXIF orientation จาก binary
-      var canvas = document.createElement('canvas');
-      var ctx = canvas.getContext('2d');
       var orientation = 1;
-
-      // อ่าน ArrayBuffer เพื่อหา EXIF
       try {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', src, false); // sync
-        xhr.responseType = 'arraybuffer';
-        // ถ้าเป็น data URL ให้แปลงก่อน
-      } catch(e) {}
-
-      // วิธีง่ายกว่า: อ่าน EXIF จาก dataURL ผ่าน binary string
-      if (src.indexOf('data:image') === 0) {
-        try {
-          var base64 = src.split(',')[1];
-          var binary = atob(base64);
-          var view = new DataView(new ArrayBuffer(binary.length));
-          for (var i = 0; i < binary.length; i++) view.setUint8(i, binary.charCodeAt(i));
-
-          if (view.getUint16(0) === 0xFFD8) { // JPEG
-            var offset = 2;
-            while (offset < view.byteLength) {
-              if (view.getUint16(offset) === 0xFFE1) { // APP1
-                if (view.getUint32(offset+4) === 0x45786966) { // Exif
-                  var little = view.getUint16(offset+10) === 0x4949;
-                  var ifdOffset = view.getUint32(offset+14, little);
-                  var entries = view.getUint16(offset+10+ifdOffset, little);
-                  for (var j = 0; j < entries; j++) {
-                    var tag = view.getUint16(offset+10+ifdOffset+2+j*12, little);
-                    if (tag === 0x0112) {
-                      orientation = view.getUint16(offset+10+ifdOffset+2+j*12+8, little);
-                      break;
-                    }
-                  }
+        var bin = atob(src.split(',')[1]);
+        var view = new DataView(new ArrayBuffer(bin.length));
+        for (var i=0;i<bin.length;i++) view.setUint8(i, bin.charCodeAt(i));
+        if (view.getUint16(0)===0xFFD8) {
+          var off=2;
+          while (off<view.byteLength) {
+            if (view.getUint16(off)===0xFFE1) {
+              if (view.getUint32(off+4)===0x45786966) {
+                var le=view.getUint16(off+10)===0x4949;
+                var ifd=view.getUint32(off+14,le);
+                var nn=view.getUint16(off+10+ifd,le);
+                for (var j=0;j<nn;j++) {
+                  if (view.getUint16(off+10+ifd+2+j*12,le)===0x0112)
+                    orientation=view.getUint16(off+10+ifd+2+j*12+8,le);
                 }
-                break;
               }
-              offset += 2 + view.getUint16(offset+2);
+              break;
             }
+            off+=2+view.getUint16(off+2);
           }
-        } catch(e) { orientation = 1; }
-      }
-
-      // หมุน canvas ตาม orientation
-      var w = img.naturalWidth, h = img.naturalHeight;
-      if (orientation >= 5 && orientation <= 8) {
-        canvas.width = h; canvas.height = w;
-      } else {
-        canvas.width = w; canvas.height = h;
-      }
-
-      switch(orientation) {
-        case 2: ctx.transform(-1,0,0,1,w,0); break;
-        case 3: ctx.transform(-1,0,0,-1,w,h); break;
-        case 4: ctx.transform(1,0,0,-1,0,h); break;
-        case 5: ctx.transform(0,1,1,0,0,0); break;
-        case 6: ctx.transform(0,1,-1,0,h,0); break;
-        case 7: ctx.transform(0,-1,-1,0,h,w); break;
-        case 8: ctx.transform(0,-1,1,0,0,w); break;
-        default: break;
-      }
-
-      ctx.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL('image/jpeg', 0.85));
+        }
+      } catch(e){}
+      var w=img.naturalWidth, h=img.naturalHeight;
+      var cv=document.createElement('canvas'), ctx=cv.getContext('2d');
+      if (orientation>=5){cv.width=h;cv.height=w;}
+      else {cv.width=w;cv.height=h;}
+      var T=[[1,0,0,1,0,0],[1,0,0,-1,0,h],[-1,0,0,-1,w,h],[-1,0,0,1,w,0],
+             [0,1,1,0,0,0],[0,1,-1,0,h,0],[0,-1,-1,0,h,w],[0,-1,1,0,0,w]];
+      var m=T[orientation-1];
+      ctx.transform(m[0],m[1],m[2],m[3],m[4],m[5]);
+      ctx.drawImage(img,0,0);
+      resolve(cv.toDataURL('image/jpeg',0.85));
     };
-    img.onerror = function() { resolve(src); };
-    img.src = src;
+    img.onerror=function(){resolve(src);};
+    img.src=src;
   });
 }
 
-// ===== สร้าง PDF ด้วย Canvas (รองรับภาษาไทยทุก platform) =====
+/* ─── makeItem ─── */
 function makeItem() {
   itemCount++;
   var n = itemCount;
@@ -341,179 +340,147 @@ function makeItem() {
     + '</div>'
     + '<div class="grid2">'
     + '<div class="df full"><label>รายการที่ต้องแก้ไข</label>'
-    + '<input type="text" id="desc' + n + '" placeholder="ระบุรายละเอียดที่ต้องแก้ไข..."></div>'
+    + '<input type="text" id="desc'+n+'" placeholder="ระบุรายละเอียดที่ต้องแก้ไข..."></div>'
     + '<div class="df full img-pair">'
     + '<div><label style="display:block;font-size:11.5px;font-weight:600;color:#445;margin-bottom:4px">Before — รูปก่อนแก้ไข</label>'
-    + '<div class="imgbox" id="bw' + n + '">'
-    + '<input type="file" accept="image/*">'
-    + '<div class="ico">🖼️</div><div class="hint">คลิกเพื่ออัปโหลดรูป</div>'
-    + '<img id="bi' + n + '"></div></div>'
+    + '<div class="imgbox" id="bw'+n+'"><input type="file" accept="image/*"><div class="ico">🖼️</div><div class="hint">คลิกเพื่ออัปโหลดรูป</div><img id="bi'+n+'"></div></div>'
     + '<div><label style="display:block;font-size:11.5px;font-weight:600;color:#445;margin-bottom:4px">After — รูปหลังแก้ไข</label>'
-    + '<div class="imgbox" id="aw' + n + '">'
-    + '<input type="file" accept="image/*">'
-    + '<div class="ico">🖼️</div><div class="hint">คลิกเพื่ออัปโหลดรูป</div>'
-    + '<img id="ai' + n + '"></div></div>'
+    + '<div class="imgbox" id="aw'+n+'"><input type="file" accept="image/*"><div class="ico">🖼️</div><div class="hint">คลิกเพื่ออัปโหลดรูป</div><img id="ai'+n+'"></div></div>'
     + '</div>'
-    + '<div class="df"><label>วันที่แล้วเสร็จ</label>'
-    + '<input type="date" id="dd' + n + '"></div>'
+    + '<div class="df"><label>วันที่แล้วเสร็จ</label><input type="date" id="dd'+n+'"></div>'
     + '<div class="df"><label>ผลการตรวจสอบ</label>'
-    + '<select id="rs' + n + '" style="width:100%;padding:7px 10px;border:1.5px solid #cdd6e4;border-radius:6px;font-family:Sarabun,sans-serif;font-size:13px;background:#fff">'
+    + '<select id="rs'+n+'" style="width:100%;padding:7px 10px;border:1.5px solid #cdd6e4;border-radius:6px;font-family:Sarabun,sans-serif;font-size:13px;background:#fff">'
     + '<option value="">— เลือก —</option>'
     + '<option value="pass">✅ ผ่าน</option>'
     + '<option value="fail">❌ ไม่ผ่าน</option>'
     + '</select></div>'
-    + '<div class="df full" id="rndiv' + n + '" style="display:none">'
-    + '<label>เหตุผล (กรณีไม่ผ่าน)</label>'
-    + '<textarea id="rn' + n + '" placeholder="ระบุเหตุผล..." style="width:100%;min-height:52px;padding:7px 10px;border:1.5px solid #e74c3c;border-radius:6px;font-family:Sarabun,sans-serif;font-size:13px;resize:vertical"></textarea>'
+    + '<div class="df full" id="rndiv'+n+'" style="display:none"><label>เหตุผล (กรณีไม่ผ่าน)</label>'
+    + '<textarea id="rn'+n+'" placeholder="ระบุเหตุผล..." style="width:100%;min-height:52px;padding:7px 10px;border:1.5px solid #e74c3c;border-radius:6px;font-family:Sarabun,sans-serif;font-size:13px;resize:vertical"></textarea>'
     + '</div>'
     + '</div>';
+
   document.getElementById('itemList').appendChild(d);
   rebadge();
 
-  // file upload listener
-  ['bw','aw'].forEach(function(pfx) {
-    var box = document.getElementById(pfx + n);
-    var imgEl = document.getElementById((pfx === 'bw' ? 'bi' : 'ai') + n);
-    var inp = box.querySelector('input[type=file]');
-    inp.addEventListener('change', function() {
-      var file = this.files[0];
-      if (!file) return;
-      var rd = new FileReader();
-      rd.onload = function(ev) {
-        fixOrientation(ev.target.result).then(function(fixed) {
-          imgEl.src = fixed;
-          imgEl.style.display = 'block';
-          box.querySelector('.ico').style.display = 'none';
-          box.querySelector('.hint').style.display = 'none';
+  ['bw','aw'].forEach(function(pfx){
+    var box=document.getElementById(pfx+n);
+    var imgEl=document.getElementById((pfx==='bw'?'bi':'ai')+n);
+    box.querySelector('input[type=file]').addEventListener('change',function(){
+      var file=this.files[0]; if(!file) return;
+      var rd=new FileReader();
+      rd.onload=function(ev){
+        fixOrientation(ev.target.result).then(function(fixed){
+          imgEl.src=fixed; imgEl.style.display='block';
+          box.querySelector('.ico').style.display='none';
+          box.querySelector('.hint').style.display='none';
         });
       };
       rd.readAsDataURL(file);
     });
   });
 
-  // result toggle
-  document.getElementById('rs' + n).addEventListener('change', function() {
-    var rdiv = document.getElementById('rndiv' + this.closest('.item').id.replace('it',''));
-    if(rdiv) rdiv.style.display = this.value === 'fail' ? 'block' : 'none';
+  document.getElementById('rs'+n).addEventListener('change',function(){
+    var id=this.closest('.item').id.replace('it','');
+    var rdiv=document.getElementById('rndiv'+id);
+    if(rdiv) rdiv.style.display=this.value==='fail'?'block':'none';
   });
 }
 
-function rebadge() {
-  var all = document.querySelectorAll('.item');
-  all.forEach(function(el, i) {
-    var b = el.querySelector('.badge');
-    if (b) b.textContent = i + 1;
+/* ─── rebadge ─── */
+function rebadge(){
+  document.querySelectorAll('.item').forEach(function(el,i){
+    var b=el.querySelector('.badge'); if(b) b.textContent=i+1;
   });
 }
 
-// delegated remove
-document.getElementById('itemList').addEventListener('click', function(e) {
-  var btn = e.target.closest('.btn-rm');
-  if (!btn) return;
-  var n = btn.getAttribute('data-n');
-  var el = document.getElementById('it' + n);
-  if (el) { el.remove(); rebadge(); }
+/* ─── remove item (delegated) ─── */
+document.getElementById('itemList').addEventListener('click',function(e){
+  var btn=e.target.closest('.btn-rm'); if(!btn) return;
+  var el=document.getElementById('it'+btn.getAttribute('data-n'));
+  if(el){el.remove();rebadge();}
 });
 
-// add buttons
-// btnAdd removed from toolbar
+/* ─── add button ─── */
 document.getElementById('btnAdd2').addEventListener('click', makeItem);
 
-// clear
-document.getElementById('btnClear').addEventListener('click', function() {
-  if (!confirm('ล้างข้อมูลทั้งหมด?')) return;
-  document.getElementById('iDate').value = '';
-  document.getElementById('iLoc').value = '';
-  document.getElementById('itemList').innerHTML = '';
-  itemCount = 0;
-  [0,1,2].forEach(function(i) { clearCv(i); document.getElementById('sn'+i).value=''; });
+/* ─── clear ─── */
+document.getElementById('btnClear').addEventListener('click',function(){
+  if(!confirm('ล้างข้อมูลทั้งหมด?')) return;
+  document.getElementById('iDate').value='';
+  document.getElementById('iLoc').value='';
+  document.getElementById('itemList').innerHTML='';
+  itemCount=0;
+  [0,1,2].forEach(function(i){clearCv(i);document.getElementById('sn'+i).value='';});
   makeItem();
 });
 
-// signature
-function initCv(id) {
-  var cv = document.getElementById('cv' + id);
-  if (!cv) return;
-  var pw = cv.parentElement ? cv.parentElement.clientWidth : 0;
-  cv.width  = pw > 0 ? pw : (window.innerWidth > 600 ? 280 : window.innerWidth - 80);
-  cv.height = 100;
-  var ctx = cv.getContext('2d');
-  var down = false;
-  function pt(e) {
-    var r = cv.getBoundingClientRect();
-    var s = e.touches ? e.touches[0] : e;
-    return [s.clientX - r.left, s.clientY - r.top];
-  }
-  cv.addEventListener('mousedown', function(e) { down=true; ctx.beginPath(); var p=pt(e); ctx.moveTo(p[0],p[1]); });
-  cv.addEventListener('mousemove', function(e) { if(!down)return; var p=pt(e); ctx.lineTo(p[0],p[1]); ctx.strokeStyle='#111'; ctx.lineWidth=1.8; ctx.lineCap='round'; ctx.stroke(); });
-  cv.addEventListener('mouseup', function(){down=false;});
-  cv.addEventListener('mouseleave', function(){down=false;});
-  cv.addEventListener('touchstart', function(e){e.preventDefault();down=true;ctx.beginPath();var p=pt(e);ctx.moveTo(p[0],p[1]);},{passive:false});
-  cv.addEventListener('touchmove', function(e){e.preventDefault();if(!down)return;var p=pt(e);ctx.lineTo(p[0],p[1]);ctx.strokeStyle='#111';ctx.lineWidth=1.8;ctx.lineCap='round';ctx.stroke();},{passive:false});
-  cv.addEventListener('touchend', function(){down=false;});
+/* ─── signature ─── */
+function initCv(id){
+  var cv=document.getElementById('cv'+id); if(!cv) return;
+  var pw=cv.parentElement?cv.parentElement.clientWidth:0;
+  cv.width=pw>0?pw:Math.max(280,window.innerWidth-80);
+  cv.height=100;
+  var ctx=cv.getContext('2d'),down=false;
+  function pt(e){var r=cv.getBoundingClientRect(),s=e.touches?e.touches[0]:e;return [s.clientX-r.left,s.clientY-r.top];}
+  cv.addEventListener('mousedown',function(e){down=true;ctx.beginPath();var p=pt(e);ctx.moveTo(p[0],p[1]);});
+  cv.addEventListener('mousemove',function(e){if(!down)return;var p=pt(e);ctx.lineTo(p[0],p[1]);ctx.strokeStyle='#111';ctx.lineWidth=1.8;ctx.lineCap='round';ctx.stroke();});
+  cv.addEventListener('mouseup',function(){down=false;});
+  cv.addEventListener('mouseleave',function(){down=false;});
+  cv.addEventListener('touchstart',function(e){e.preventDefault();down=true;ctx.beginPath();var p=pt(e);ctx.moveTo(p[0],p[1]);},{passive:false});
+  cv.addEventListener('touchmove',function(e){e.preventDefault();if(!down)return;var p=pt(e);ctx.lineTo(p[0],p[1]);ctx.strokeStyle='#111';ctx.lineWidth=1.8;ctx.lineCap='round';ctx.stroke();},{passive:false});
+  cv.addEventListener('touchend',function(){down=false;});
 }
-function clearCv(id) {
-  var cv = document.getElementById('cv'+id);
-  if (cv) cv.getContext('2d').clearRect(0,0,cv.width,cv.height);
-}
-document.querySelectorAll('.sg-clr').forEach(function(btn) {
-  btn.addEventListener('click', function() { clearCv(this.getAttribute('data-id')); });
+function clearCv(id){var cv=document.getElementById('cv'+id);if(cv)cv.getContext('2d').clearRect(0,0,cv.width,cv.height);}
+document.querySelectorAll('.sg-clr').forEach(function(btn){
+  btn.addEventListener('click',function(){clearCv(this.getAttribute('data-id'));});
 });
 
-// toast
-function toast(msg, err) {
-  var t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast' + (err ? ' err' : '');
-  t.style.display = 'block';
-  setTimeout(function(){t.style.display='none';}, 3500);
+/* ─── toast ─── */
+function toast(msg,err){
+  var t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast'+(err?' err':'');t.style.display='block';
+  setTimeout(function(){t.style.display='none';},3500);
 }
 
-// submit
-document.getElementById('btnSubmit').addEventListener('click', async function() {
-  // URL is set
-  var date = document.getElementById('iDate').value;
-  var loc  = document.getElementById('iLoc').value;
-  if (!date || !loc) { toast('กรุณากรอก วันที่ และ Location ก่อนครับ', true); return; }
-
-  var items = [];
-  document.querySelectorAll('.item').forEach(function(el, i) {
-    var n = el.id.replace('it','');
-    var bi = document.getElementById('bi'+n);
-    var ai = document.getElementById('ai'+n);
+/* ─── submit ─── */
+document.getElementById('btnSubmit').addEventListener('click',async function(){
+  var date=document.getElementById('iDate').value;
+  var loc=document.getElementById('iLoc').value;
+  if(!date||!loc){toast('กรุณากรอก วันที่ และ Location ก่อนครับ',true);return;}
+  var items=[];
+  document.querySelectorAll('.item').forEach(function(el,i){
+    var n=el.id.replace('it','');
+    var bi=document.getElementById('bi'+n),ai=document.getElementById('ai'+n);
     items.push({
-      no: i+1,
-      desc: (document.getElementById('desc'+n)||{value:''}).value,
-      doneDate: (document.getElementById('dd'+n)||{value:''}).value,
-      result: (document.getElementById('rs'+n)||{value:''}).value,
-      reason: (document.getElementById('rn'+n)||{value:''}).value,
-      beforeImg: bi && bi.style.display!=='none' ? bi.src : '',
-      afterImg:  ai && ai.style.display!=='none' ? ai.src : ''
+      no:i+1,
+      desc:(document.getElementById('desc'+n)||{value:''}).value,
+      doneDate:(document.getElementById('dd'+n)||{value:''}).value,
+      result:(document.getElementById('rs'+n)||{value:''}).value,
+      reason:(document.getElementById('rn'+n)||{value:''}).value,
+      beforeImg:bi&&bi.style.display!=='none'?bi.src:'',
+      afterImg:ai&&ai.style.display!=='none'?ai.src:''
     });
   });
-
-  var sigs     = [0,1,2].map(function(i){var c=document.getElementById('cv'+i);return c?c.toDataURL('image/png'):'';});
-  var sigNames = [0,1,2].map(function(i){var n=document.getElementById('sn'+i);return n?n.value:'';});
-
+  var sigs=[0,1,2].map(function(i){var c=document.getElementById('cv'+i);return c?c.toDataURL('image/png'):'';});
+  var sigNames=[0,1,2].map(function(i){var s=document.getElementById('sn'+i);return s?s.value:'';});
   document.getElementById('ov').classList.add('show');
   try {
-    await fetch(SCRIPT_URL, {method:'POST', mode:'no-cors', body:JSON.stringify({
-      inspectDate:date, location:loc, items:items,
-      sigNames:sigNames, sigs:sigs, submittedAt:new Date().toISOString()
+    await fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',body:JSON.stringify({
+      inspectDate:date,location:loc,items:items,sigNames:sigNames,sigs:sigs,submittedAt:new Date().toISOString()
     })});
     document.getElementById('ov').classList.remove('show');
     toast('✅ บันทึกสำเร็จแล้วครับ!');
     setTimeout(function(){
-      if(confirm('บันทึกสำเร็จ! ต้องการล้างฟอร์มเพื่อกรอกใหม่?')) {
+      if(confirm('บันทึกสำเร็จ! ต้องการล้างฟอร์มเพื่อกรอกใหม่?'))
         document.getElementById('btnClear').click();
-      }
-    }, 800);
-  } catch(e) {
+    },800);
+  } catch(e){
     document.getElementById('ov').classList.remove('show');
-    toast('❌ เกิดข้อผิดพลาด: '+e.message, true);
+    toast('❌ เกิดข้อผิดพลาด: '+e.message,true);
   }
 });
 
+/* ─── buildPDF ─── */
 async function buildPDF() {
   var { jsPDF } = window.jspdf;
   var pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
@@ -663,26 +630,8 @@ async function buildPDF() {
   return pdf;
 }
 
-// ── ปุ่ม PDF ──
-document.getElementById('btnPrint').addEventListener('click', async function() {
-  var btn=document.getElementById('btnPrint');
-  btn.textContent='⏳ กำลังสร้าง...'; btn.disabled=true;
-  try {
-    var pdf=await buildPDF();
-    var date=document.getElementById('iDate').value||new Date().toISOString().slice(0,10);
-    var loc=document.getElementById('iLoc').value||'defects';
-    var filename='Defects_'+date+'_'+loc+'.pdf';
-    var isMobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if(isMobile){
-      var blob=pdf.output('blob'); var url=URL.createObjectURL(blob);
-      var a=document.createElement('a'); a.href=url; a.target='_blank'; a.rel='noopener';
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      setTimeout(function(){ URL.revokeObjectURL(url); },5000);
-    } else { pdf.save(filename); }
-  } catch(e){ alert('เกิดข้อผิดพลาด: '+e.message); }
-  btn.textContent='🖨 บันทึกเป็น PDF'; btn.disabled=false;
-});
 
+/* ─── LINE button ─── */
 // ── ปุ่ม แชร์ LINE ──
 document.getElementById('btnLine').addEventListener('click', async function() {
   var btn=document.getElementById('btnLine');
@@ -729,12 +678,43 @@ document.getElementById('btnLine').addEventListener('click', async function() {
   } catch(e){ if(e.name!=='AbortError') alert('เกิดข้อผิดพลาด: '+e.message); }
   btn.textContent='📤 แชร์ไป LINE'; btn.disabled=false;
 });
-// init
-(function() {
+
+/* ─── INIT ─── */
+function _init(){
   document.getElementById('iDate').value = new Date().toISOString().slice(0,10);
-  makeItem();
-  setTimeout(function(){ [0,1,2].forEach(initCv); }, 50);
-})();
+  itemCount = 1; // item แรกอยู่ใน HTML แล้ว
+
+  // ผูก event ให้ item แรก
+  ['bw','aw'].forEach(function(pfx){
+    var box=document.getElementById(pfx+'1');
+    var imgEl=document.getElementById((pfx==='bw'?'bi':'ai')+'1');
+    if(!box) return;
+    box.querySelector('input[type=file]').addEventListener('change',function(){
+      var file=this.files[0]; if(!file) return;
+      var rd=new FileReader();
+      rd.onload=function(ev){
+        fixOrientation(ev.target.result).then(function(fixed){
+          imgEl.src=fixed; imgEl.style.display='block';
+          box.querySelector('.ico').style.display='none';
+          box.querySelector('.hint').style.display='none';
+        });
+      };
+      rd.readAsDataURL(file);
+    });
+  });
+  document.getElementById('rs1').addEventListener('change',function(){
+    var rdiv=document.getElementById('rndiv1');
+    if(rdiv) rdiv.style.display=this.value==='fail'?'block':'none';
+  });
+
+  setTimeout(function(){ [0,1,2].forEach(initCv); }, 150);
+}
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',_init);
+} else {
+  _init();
+}
+
 </script>
 </body>
 </html>
