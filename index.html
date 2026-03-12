@@ -36,11 +36,11 @@ body{font-family:'Sarabun',sans-serif;background:#eef1f6;color:#222;font-size:14
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .full{grid-column:1/-1}
 .img-pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.imgbox{border:2px dashed #b0bec5;border-radius:8px;background:#f9fbfc;position:relative;min-height:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden}
+.imgbox{border:2px dashed #b0bec5;border-radius:8px;background:#f9fbfc;position:relative;height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden}
 .imgbox input[type=file]{position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2}
 .imgbox .ico{font-size:22px;pointer-events:none;z-index:1}
 .imgbox .hint{font-size:10px;color:#90a4ae;margin-top:3px;pointer-events:none;z-index:1}
-.imgbox img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;display:none;border-radius:6px}
+.imgbox img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;display:none;border-radius:6px;background:#fff}
 .reason-box{display:none}
 .add-row{padding:4px 16px 14px;text-align:center}
 .btn-green{background:#27ae60;color:#fff;border-radius:8px;padding:11px 0;width:100%;font-size:15px;border:none;font-family:inherit;font-weight:700;cursor:pointer}
@@ -193,85 +193,74 @@ canvas{border:1.5px solid #cdd6e4;border-radius:8px;width:100%;display:block;tou
 var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxCddbpGzINB7M-WyBpGcnVAHNb1PqeAxJyLNQNUlYDQG3GlV5OY3UZTiPx4G14Fz9ieA/exec';
 var itemCount = 1;
 
-/* fixOrientation — อ่าน EXIF แล้วหมุนรูปให้ตรง */
+/* fixOrientation — อ่านค่า EXIF แล้วหมุนให้ตรงทิศ */
 function getExifOrientation(buffer) {
-  var view = new DataView(buffer);
-  if (view.getUint16(0) !== 0xFFD8) return 1;
-  var off = 2, len = buffer.byteLength;
-  while (off < len - 2) {
-    var marker = view.getUint16(off);
-    if (marker === 0xFFE1) {
-      // APP1 marker — check Exif
-      if (view.getUint32(off + 4) === 0x45786966) {
-        var tiffOff = off + 10;
-        var le = view.getUint16(tiffOff) === 0x4949;
-        var ifdOff = tiffOff + view.getUint32(tiffOff + 4, le);
-        var entries = view.getUint16(ifdOff, le);
-        for (var i = 0; i < entries; i++) {
-          var entryOff = ifdOff + 2 + i * 12;
-          if (view.getUint16(entryOff, le) === 0x0112) {
-            return view.getUint16(entryOff + 8, le);
+  try {
+    var view = new DataView(buffer);
+    if (view.getUint16(0) !== 0xFFD8) return 1;
+    var off = 2;
+    while (off < view.byteLength - 4) {
+      var marker = view.getUint16(off);
+      if (marker === 0xFFE1) {
+        if (view.getUint32(off + 4) === 0x45786966) {
+          var tiff = off + 10;
+          var le   = view.getUint16(tiff) === 0x4949;
+          var ifd  = tiff + view.getUint32(tiff + 4, le);
+          var num  = view.getUint16(ifd, le);
+          for (var i = 0; i < num; i++) {
+            var e = ifd + 2 + i * 12;
+            if (view.getUint16(e, le) === 0x0112)
+              return view.getUint16(e + 8, le);
           }
         }
+        return 1;
       }
-      break;
+      if ((marker & 0xFF00) !== 0xFF00) return 1;
+      off += 2 + view.getUint16(off + 2);
     }
-    if ((marker & 0xFF00) !== 0xFF00) break;
-    off += 2 + view.getUint16(off + 2);
-  }
+  } catch(e) {}
   return 1;
 }
 
 function fixOrientation(src) {
   return new Promise(function(resolve) {
-    // ถ้าเป็น blob URL หรือไม่ใช่ base64 ให้คืนทันที
     if (!src || !src.startsWith('data:')) { resolve(src); return; }
     var img = new Image();
     img.onload = function() {
-      var w = img.naturalWidth, h = img.naturalHeight;
+      var W = img.naturalWidth, H = img.naturalHeight;
       var ori = 1;
       try {
-        var b64 = src.split(',')[1];
-        var bin = atob(b64);
-        var buf = new Uint8Array(bin.length);
-        for (var i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-        ori = getExifOrientation(buf.buffer);
+        var bin = atob(src.split(',')[1]);
+        var arr = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        ori = getExifOrientation(arr.buffer);
       } catch(e) { ori = 1; }
 
-      // ori=1 ไม่ต้องหมุน แต่ยังต้อง resize ถ้ารูปใหญ่เกิน
-      var MAX = 1600;
-      var scale = Math.min(1, MAX / Math.max(w, h));
+      // ถ้า ori=1 ไม่มี EXIF หรือตรงอยู่แล้ว — คืนรูปเดิมไม่แตะ
+      if (ori === 1) { resolve(src); return; }
 
-      var sw = Math.round(w * scale);
-      var sh = Math.round(h * scale);
-
-      var cv = document.createElement('canvas');
+      var cv  = document.createElement('canvas');
       var ctx = cv.getContext('2d');
 
-      // กำหนดขนาด canvas ตาม orientation
-      if (ori >= 5 && ori <= 8) {
-        cv.width  = sh;  // สลับ width/height เมื่อหมุน 90/270
-        cv.height = sw;
-      } else {
-        cv.width  = sw;
-        cv.height = sh;
-      }
+      // ori 5-8 = ต้องสลับ width/height (หมุน 90 หรือ 270 องศา)
+      if (ori >= 5) { cv.width = H; cv.height = W; }
+      else          { cv.width = W; cv.height = H; }
 
+      // Matrix transform ตาม EXIF spec (ถูกต้อง 100%)
+      // https://jdhao.github.io/2019/07/31/image_rotation_exif_info/
       ctx.save();
-      // transform ตาม EXIF orientation
-      switch(ori) {
-        case 2: ctx.transform(-1, 0, 0,  1, cv.width, 0); break;
-        case 3: ctx.transform(-1, 0, 0, -1, cv.width, cv.height); break;
-        case 4: ctx.transform( 1, 0, 0, -1, 0, cv.height); break;
-        case 5: ctx.transform( 0, 1, 1,  0, 0, 0); break;
-        case 6: ctx.transform( 0, 1,-1,  0, cv.height, 0); break;
-        case 7: ctx.transform( 0,-1,-1,  0, cv.height, cv.width); break;
-        case 8: ctx.transform( 0,-1, 1,  0, 0, cv.width); break;
-        default: break; // ori=1 ไม่หมุน
+      switch (ori) {
+        case 2: ctx.translate(W, 0);    ctx.scale(-1,  1); break; // flip H
+        case 3: ctx.translate(W, H);    ctx.rotate(Math.PI); break; // 180
+        case 4: ctx.translate(0, H);    ctx.scale( 1, -1); break; // flip V
+        case 5: ctx.rotate(0.5*Math.PI); ctx.scale( 1, -1); break;
+        case 6: ctx.rotate(0.5*Math.PI); ctx.translate(0, -H); break; // 90 CW
+        case 7: ctx.rotate(0.5*Math.PI); ctx.translate(W, -H); ctx.scale(-1, 1); break;
+        case 8: ctx.rotate(-0.5*Math.PI); ctx.translate(-W, 0); break; // 90 CCW
       }
-      ctx.drawImage(img, 0, 0, sw, sh);
+      ctx.drawImage(img, 0, 0);
       ctx.restore();
-      resolve(cv.toDataURL('image/jpeg', 0.88));
+      resolve(cv.toDataURL('image/jpeg', 0.92));
     };
     img.onerror = function() { resolve(src); };
     img.src = src;
