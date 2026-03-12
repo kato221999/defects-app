@@ -417,20 +417,69 @@ document.getElementById('btnClear').addEventListener('click',function(){
 /* ─── signature ─── */
 function initCv(id){
   var cv=document.getElementById('cv'+id); if(!cv) return;
-  var pw=cv.parentElement?cv.parentElement.clientWidth:0;
-  cv.width=pw>0?pw:Math.max(280,window.innerWidth-80);
-  cv.height=100;
-  var ctx=cv.getContext('2d'),down=false;
-  function pt(e){var r=cv.getBoundingClientRect(),s=e.touches?e.touches[0]:e;return [s.clientX-r.left,s.clientY-r.top];}
-  cv.addEventListener('mousedown',function(e){down=true;ctx.beginPath();var p=pt(e);ctx.moveTo(p[0],p[1]);});
-  cv.addEventListener('mousemove',function(e){if(!down)return;var p=pt(e);ctx.lineTo(p[0],p[1]);ctx.strokeStyle='#111';ctx.lineWidth=1.8;ctx.lineCap='round';ctx.stroke();});
-  cv.addEventListener('mouseup',function(){down=false;});
-  cv.addEventListener('mouseleave',function(){down=false;});
-  cv.addEventListener('touchstart',function(e){e.preventDefault();down=true;ctx.beginPath();var p=pt(e);ctx.moveTo(p[0],p[1]);},{passive:false});
-  cv.addEventListener('touchmove',function(e){e.preventDefault();if(!down)return;var p=pt(e);ctx.lineTo(p[0],p[1]);ctx.strokeStyle='#111';ctx.lineWidth=1.8;ctx.lineCap='round';ctx.stroke();},{passive:false});
-  cv.addEventListener('touchend',function(){down=false;});
+
+  // ตั้ง canvas size ตาม container จริง
+  var container = cv.parentElement;
+  var pw = container ? container.getBoundingClientRect().width : 0;
+  if(pw < 10) pw = window.innerWidth - 48;
+  cv.width  = Math.floor(pw);
+  cv.height = 110;
+
+  // วาดพื้นหลังขาว
+  var ctx = cv.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0,0,cv.width,cv.height);
+
+  var down = false;
+  function getPos(e){
+    var r = cv.getBoundingClientRect();
+    var src = e.touches ? e.touches[0] : e;
+    return [
+      (src.clientX - r.left) * (cv.width  / r.width),
+      (src.clientY - r.top)  * (cv.height / r.height)
+    ];
+  }
+  function startDraw(e){
+    e.preventDefault();
+    down=true;
+    ctx.beginPath();
+    var p=getPos(e); ctx.moveTo(p[0],p[1]);
+  }
+  function draw(e){
+    e.preventDefault();
+    if(!down) return;
+    var p=getPos(e);
+    ctx.lineTo(p[0],p[1]);
+    ctx.strokeStyle='#111111';
+    ctx.lineWidth=2;
+    ctx.lineCap='round';
+    ctx.lineJoin='round';
+    ctx.stroke();
+  }
+  function stopDraw(){ down=false; }
+
+  // ลบ listener เก่า (ถ้ามี) โดย clone node
+  var newCv = cv.cloneNode(true);
+  container.replaceChild(newCv, cv);
+  cv = newCv;
+  ctx = cv.getContext('2d');
+  ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,cv.width,cv.height);
+
+  cv.addEventListener('mousedown',  startDraw);
+  cv.addEventListener('mousemove',  draw);
+  cv.addEventListener('mouseup',    stopDraw);
+  cv.addEventListener('mouseleave', stopDraw);
+  cv.addEventListener('touchstart', startDraw, {passive:false});
+  cv.addEventListener('touchmove',  draw,       {passive:false});
+  cv.addEventListener('touchend',   stopDraw,   {passive:false});
 }
-function clearCv(id){var cv=document.getElementById('cv'+id);if(cv)cv.getContext('2d').clearRect(0,0,cv.width,cv.height);}
+function clearCv(id){
+  var cv=document.getElementById('cv'+id);
+  if(!cv) return;
+  var ctx=cv.getContext('2d');
+  ctx.fillStyle='#ffffff';
+  ctx.fillRect(0,0,cv.width,cv.height);
+}
 document.querySelectorAll('.sg-clr').forEach(function(btn){
   btn.addEventListener('click',function(){clearCv(this.getAttribute('data-id'));});
 });
@@ -684,17 +733,20 @@ function _init(){
   document.getElementById('iDate').value = new Date().toISOString().slice(0,10);
   itemCount = 1; // item แรกอยู่ใน HTML แล้ว
 
-  // ผูก event ให้ item แรก
+  // ── ผูก event รูปภาพ item แรก ──
   ['bw','aw'].forEach(function(pfx){
-    var box=document.getElementById(pfx+'1');
-    var imgEl=document.getElementById((pfx==='bw'?'bi':'ai')+'1');
-    if(!box) return;
-    box.querySelector('input[type=file]').addEventListener('change',function(){
+    var box   = document.getElementById(pfx+'1');
+    var imgEl = document.getElementById((pfx==='bw'?'bi':'ai')+'1');
+    if(!box||!imgEl) return;
+    var inp = box.querySelector('input[type=file]');
+    if(!inp) return;
+    inp.addEventListener('change',function(){
       var file=this.files[0]; if(!file) return;
       var rd=new FileReader();
       rd.onload=function(ev){
         fixOrientation(ev.target.result).then(function(fixed){
-          imgEl.src=fixed; imgEl.style.display='block';
+          imgEl.src=fixed;
+          imgEl.style.display='block';
           box.querySelector('.ico').style.display='none';
           box.querySelector('.hint').style.display='none';
         });
@@ -702,12 +754,20 @@ function _init(){
       rd.readAsDataURL(file);
     });
   });
-  document.getElementById('rs1').addEventListener('change',function(){
-    var rdiv=document.getElementById('rndiv1');
-    if(rdiv) rdiv.style.display=this.value==='fail'?'block':'none';
-  });
 
-  setTimeout(function(){ [0,1,2].forEach(initCv); }, 150);
+  // ── ผูก event ผลการตรวจสอบ item แรก ──
+  var rs1 = document.getElementById('rs1');
+  if(rs1){
+    rs1.addEventListener('change',function(){
+      var rdiv=document.getElementById('rndiv1');
+      if(rdiv) rdiv.style.display=this.value==='fail'?'block':'none';
+    });
+  }
+
+  // ── init ลายเซ็น (รอ DOM render เสร็จก่อน) ──
+  setTimeout(function(){
+    [0,1,2].forEach(initCv);
+  }, 200);
 }
 if(document.readyState==='loading'){
   document.addEventListener('DOMContentLoaded',_init);
